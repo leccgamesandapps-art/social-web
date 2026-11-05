@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Social Web</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script>
+    // Basic anti-inspect (not 100% but raises bar)
+    (function(){
+      document.addEventListener('contextmenu', e => e.preventDefault());
+      document.addEventListener('keydown', e => {
+        if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key)) || (e.ctrlKey && e.key === 'U')) {
+          e.preventDefault(); e.stopPropagation();
+        }
+      });
+      // Detect DevTools roughly
+      let devtools = {open: false};
+      const threshold = 160;
+      setInterval(() => {
+        const widthDiff = window.outerWidth - window.innerWidth > threshold;
+        const heightDiff = window.outerHeight - window.innerHeight > threshold;
+        if (widthDiff || heightDiff) {
+          if (!devtools.open) {
+            devtools.open = true;
+            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#fff;font-family:sans-serif;"><h2>Access restricted</h2></div>';
+          }
+        } else {
+          devtools.open = false;
+        }
+      }, 500);
+    })();
+  </script>
+</head>
+<body>
+  <div id="loader" class="loader-screen">
+    <div class="spinner"></div>
+    <p>Loading Social Web...</p>
+  </div>
+
+  <div id="auth-container" class="auth-container hidden">
+    <div class="auth-card">
+      <h1>Social Web</h1>
+      <p class="subtitle">Connect. Share. Discover.</p>
+
+      <div class="tabs">
+        <button id="tab-login" class="tab active">Login</button>
+        <button id="tab-register" class="tab">Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form">
+        <input type="text" id="login-username" placeholder="Username" required autocomplete="username" />
+        <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password" />
+        <button type="submit" class="btn primary">Login</button>
+        <p id="login-error" class="error"></p>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="auth-form hidden">
+        <input type="text" id="reg-username" placeholder="Username" required minlength="3" maxlength="20" />
+        <input type="password" id="reg-password" placeholder="Password" required minlength="6" />
+        <input type="password" id="reg-confirm" placeholder="Confirm Password" required />
+        <input type="text" id="reg-displayname" placeholder="Display Name" required maxlength="30" />
+        <button type="submit" class="btn primary">Create Account</button>
+        <p id="reg-error" class="error"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="/db.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    // Loading simulation then show auth
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('loader').classList.add('hidden');
+        document.getElementById('auth-container').classList.remove('hidden');
+        // If already logged in, go to dashboard
+        if (DB.getSession()) {
+          window.location.replace('/dashboard');
+        }
+      }, 1200);
+    });
+  </script>
+</body>
+</html>
