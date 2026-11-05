@@ -14,20 +14,6 @@
           e.preventDefault(); e.stopPropagation();
         }
       });
-      let devtools = {open: false};
-      const threshold = 160;
-      setInterval(() => {
-        const widthDiff = window.outerWidth - window.innerWidth > threshold;
-        const heightDiff = window.outerHeight - window.innerHeight > threshold;
-        if (widthDiff || heightDiff) {
-          if (!devtools.open) {
-            devtools.open = true;
-            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#fff;font-family:sans-serif;"><h2>Access restricted</h2></div>';
-          }
-        } else {
-          devtools.open = false;
-        }
-      }, 500);
     })();
   </script>
 </head>
@@ -36,13 +22,12 @@
     <aside class="sidebar">
       <div class="logo">
         <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="40" height="40" rx="12" fill="url(#grad)"/>
+          <rect width="40" height="40" rx="12" fill="url(#g1)"/>
           <path d="M12 20c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
           <circle cx="20" cy="20" r="3" fill="#fff"/>
           <defs>
-            <linearGradient id="grad" x1="0" y1="0" x2="40" y2="40">
-              <stop stop-color="#7c6cff"/>
-              <stop offset="1" stop-color="#a78bfa"/>
+            <linearGradient id="g1" x1="0" y1="0" x2="40" y2="40">
+              <stop stop-color="#8b7cff"/><stop offset="1" stop-color="#a78bfa"/>
             </linearGradient>
           </defs>
         </svg>
@@ -66,105 +51,122 @@
       </div>
     </aside>
 
-    <div class="mobile-header">
-      <div class="logo">
-        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="40" height="40" rx="12" fill="url(#grad2)"/>
-          <path d="M12 20c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
-          <circle cx="20" cy="20" r="3" fill="#fff"/>
-          <defs>
-            <linearGradient id="grad2" x1="0" y1="0" x2="40" y2="40">
-              <stop stop-color="#7c6cff"/>
-              <stop offset="1" stop-color="#a78bfa"/>
-            </linearGradient>
-          </defs>
-        </svg>
-        <span>Social Web</span>
+    <div class="main-wrap">
+      <div class="mobile-header">
+        <div class="logo">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="40" height="40" rx="12" fill="url(#g2)"/>
+            <path d="M12 20c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+            <circle cx="20" cy="20" r="3" fill="#fff"/>
+            <defs>
+              <linearGradient id="g2" x1="0" y1="0" x2="40" y2="40">
+                <stop stop-color="#8b7cff"/><stop offset="1" stop-color="#a78bfa"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <span>Social Web</span>
+        </div>
+        <button id="logout-btn-mobile" class="btn small">Logout</button>
       </div>
-      <button id="logout-btn-mobile" class="btn small">Logout</button>
+
+      <main class="main-content">
+        <section id="view-home" class="view active">
+          <div class="view-header"><h2>Feed</h2></div>
+          <div id="feed" class="feed"></div>
+        </section>
+
+        <section id="view-profile" class="view">
+          <div id="profile-header"></div>
+          <div id="profile-posts" class="feed"></div>
+        </section>
+
+        <section id="view-friends" class="view">
+          <div class="view-header"><h2>Friends</h2></div>
+          <div id="friends-list" class="list"></div>
+        </section>
+
+        <section id="view-notifications" class="view">
+          <div class="view-header"><h2>Notifications</h2></div>
+          <div id="notif-list" class="list"></div>
+        </section>
+
+        <section id="view-search" class="view search-section">
+          <div class="view-header"><h2>Search</h2></div>
+          <input type="text" id="search-input" placeholder="Search users or posts..." />
+          <div id="search-results" class="list"></div>
+        </section>
+
+        <section id="view-create" class="view">
+          <div class="view-header"><h2>Create Post</h2></div>
+          <div class="create-box">
+            <textarea id="post-content" placeholder="What's on your mind?" rows="5"></textarea>
+            <button id="post-submit" class="btn primary">Post</button>
+          </div>
+        </section>
+
+        <section id="view-settings" class="view">
+          <div class="view-header"><h2>Settings</h2></div>
+          <div class="settings-group">
+            <label>Display Name</label>
+            <input type="text" id="set-displayname" />
+            <button id="save-profile" class="btn primary">Save</button>
+          </div>
+          <div class="settings-group">
+            <label>Change Password</label>
+            <input type="password" id="set-newpass" placeholder="New password" />
+            <button id="save-pass" class="btn">Update Password</button>
+          </div>
+          <div class="settings-group danger">
+            <button id="clear-data" class="btn danger">Clear Local Data</button>
+          </div>
+        </section>
+
+        <section id="view-post" class="view">
+          <button id="back-btn" class="btn small" style="margin-bottom:16px">← Back</button>
+          <div id="single-post"></div>
+          <div class="comments-section">
+            <h3>Comments</h3>
+            <div id="comments-list"></div>
+            <textarea id="comment-input" placeholder="Write a comment..." rows="2" style="margin-top:12px"></textarea>
+            <button id="comment-submit" class="btn primary">Comment</button>
+          </div>
+        </section>
+
+        <section id="view-edit" class="view">
+          <div class="view-header"><h2>Edit Post</h2></div>
+          <div class="create-box">
+            <textarea id="edit-content" rows="5"></textarea>
+            <div style="display:flex;gap:10px">
+              <button id="edit-save" class="btn primary">Save</button>
+              <button id="edit-cancel" class="btn">Cancel</button>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
 
-    <main class="main-content">
-      <section id="view-home" class="view active">
-        <div class="view-header"><h2>Feed</h2></div>
-        <div id="feed" class="feed"></div>
-      </section>
-
-      <section id="view-profile" class="view">
-        <div id="profile-header"></div>
-        <div id="profile-posts" class="feed"></div>
-      </section>
-
-      <section id="view-friends" class="view">
-        <div class="view-header"><h2>Friends</h2></div>
-        <div id="friends-list" class="list"></div>
-      </section>
-
-      <section id="view-notifications" class="view">
-        <div class="view-header"><h2>Notifications</h2></div>
-        <div id="notif-list" class="list"></div>
-      </section>
-
-      <section id="view-search" class="view search-section">
-        <div class="view-header"><h2>Search</h2></div>
-        <input type="text" id="search-input" placeholder="Search users or posts..." />
-        <div id="search-results" class="list"></div>
-      </section>
-
-      <section id="view-create" class="view">
-        <div class="view-header"><h2>Create Post</h2></div>
-        <div class="create-box">
-          <textarea id="post-content" placeholder="What's on your mind?" rows="5"></textarea>
-          <button id="post-submit" class="btn primary">Post</button>
-        </div>
-      </section>
-
-      <section id="view-settings" class="view">
-        <div class="view-header"><h2>Settings</h2></div>
-        <div class="settings-group">
-          <label>Display Name</label>
-          <input type="text" id="set-displayname" />
-          <button id="save-profile" class="btn primary">Save</button>
-        </div>
-        <div class="settings-group">
-          <label>Change Password</label>
-          <input type="password" id="set-newpass" placeholder="New password" />
-          <button id="save-pass" class="btn">Update Password</button>
-        </div>
-        <div class="settings-group danger">
-          <button id="clear-data" class="btn danger">Clear Local Data</button>
-        </div>
-      </section>
-
-      <section id="view-post" class="view">
-        <button id="back-btn" class="btn small" style="margin-bottom:16px">← Back</button>
-        <div id="single-post"></div>
-        <div class="comments-section">
-          <h3>Comments</h3>
-          <div id="comments-list"></div>
-          <textarea id="comment-input" placeholder="Write a comment..." rows="2" style="margin-top:12px"></textarea>
-          <button id="comment-submit" class="btn primary">Comment</button>
-        </div>
-      </section>
-
-      <section id="view-edit" class="view">
-        <div class="view-header"><h2>Edit Post</h2></div>
-        <div class="create-box">
-          <textarea id="edit-content" rows="5"></textarea>
-          <div style="display:flex;gap:10px">
-            <button id="edit-save" class="btn primary">Save</button>
-            <button id="edit-cancel" class="btn">Cancel</button>
-          </div>
-        </div>
-      </section>
-    </main>
-
     <nav class="bottom-nav">
-      <a href="#" data-view="home" class="nav-item active"><span class="icon">🏠</span>Home</a>
-      <a href="#" data-view="search" class="nav-item"><span class="icon">🔍</span>Search</a>
-      <a href="#" data-view="create" class="nav-item"><span class="icon">✏️</span>Create</a>
-      <a href="#" data-view="notifications" class="nav-item"><span class="icon">🔔</span>Alerts<span id="notif-badge-m" class="badge hidden">0</span></a>
-      <a href="#" data-view="profile" class="nav-item"><span class="icon">👤</span>Profile</a>
+      <a href="#" data-view="home" class="nav-item active">
+        <span class="icon">🏠</span>
+        <span>Home</span>
+      </a>
+      <a href="#" data-view="search" class="nav-item">
+        <span class="icon">🔍</span>
+        <span>Search</span>
+      </a>
+      <a href="#" data-view="create" class="nav-item">
+        <span class="icon">✏️</span>
+        <span>Create</span>
+      </a>
+      <a href="#" data-view="notifications" class="nav-item">
+        <span class="icon">🔔</span>
+        <span>Alerts</span>
+        <span id="notif-badge-m" class="badge hidden">0</span>
+      </a>
+      <a href="#" data-view="profile" class="nav-item">
+        <span class="icon">👤</span>
+        <span>Profile</span>
+      </a>
     </nav>
   </div>
 
