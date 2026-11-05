@@ -7,7 +7,6 @@
   <title>Social Web</title>
   <link rel="stylesheet" href="/styles.css" />
   <script>
-    // Basic anti-inspect (not 100% but raises bar)
     (function(){
       document.addEventListener('contextmenu', e => e.preventDefault());
       document.addEventListener('keydown', e => {
@@ -15,7 +14,6 @@
           e.preventDefault(); e.stopPropagation();
         }
       });
-      // Detect DevTools roughly
       let devtools = {open: false};
       const threshold = 160;
       setInterval(() => {
@@ -41,6 +39,19 @@
 
   <div id="auth-container" class="auth-container hidden">
     <div class="auth-card">
+      <div class="auth-logo">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="40" height="40" rx="12" fill="url(#gradAuth)"/>
+          <path d="M12 20c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="20" cy="20" r="3" fill="#fff"/>
+          <defs>
+            <linearGradient id="gradAuth" x1="0" y1="0" x2="40" y2="40">
+              <stop stop-color="#7c6cff"/>
+              <stop offset="1" stop-color="#a78bfa"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
       <h1>Social Web</h1>
       <p class="subtitle">Connect. Share. Discover.</p>
 
@@ -49,7 +60,6 @@
         <button id="tab-register" class="tab">Register</button>
       </div>
 
-      <!-- Login Form -->
       <form id="login-form" class="auth-form">
         <input type="text" id="login-username" placeholder="Username" required autocomplete="username" />
         <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password" />
@@ -57,7 +67,6 @@
         <p id="login-error" class="error"></p>
       </form>
 
-      <!-- Register Form -->
       <form id="register-form" class="auth-form hidden">
         <input type="text" id="reg-username" placeholder="Username" required minlength="3" maxlength="20" />
         <input type="password" id="reg-password" placeholder="Password" required minlength="6" />
@@ -72,16 +81,14 @@
   <script src="/db.js"></script>
   <script src="/auth.js"></script>
   <script>
-    // Loading simulation then show auth
     window.addEventListener('load', () => {
       setTimeout(() => {
         document.getElementById('loader').classList.add('hidden');
         document.getElementById('auth-container').classList.remove('hidden');
-        // If already logged in, go to dashboard
         if (DB.getSession()) {
           window.location.replace('/dashboard');
         }
-      }, 1200);
+      }, 900);
     });
   </script>
 </body>
