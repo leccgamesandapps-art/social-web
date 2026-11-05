@@ -1,265 +1,367 @@
-// Dashboard app logic + route protection
-
+// Social Web - Facebook Lite style app
 (function () {
   const session = DB.getSession();
-  if (!session) {
-    window.location.replace('/main');
-    return;
-  }
+  if (!session) { window.location.replace('/main'); return; }
 
   document.getElementById('guard').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
 
-  const currentUser = session.username;
-  const displayName = session.displayName || currentUser;
-  const initial = (displayName[0] || 'U').toUpperCase();
-
+  const me = session.username;
+  const displayName = session.displayName || me;
   document.getElementById('mini-name').textContent = displayName;
   const av = document.getElementById('sidebar-avatar');
-  if (av) av.textContent = initial;
+  if (av) av.textContent = (displayName[0] || 'U').toUpperCase();
 
-  const views = document.querySelectorAll('.view');
-  const navItems = document.querySelectorAll('.nav-item');
-
-  function showView(name) {
-    views.forEach(v => v.classList.remove('active'));
-    navItems.forEach(n => n.classList.remove('active'));
-    const el = document.getElementById('view-' + name);
-    if (el) el.classList.add('active');
-    document.querySelectorAll('[data-view="' + name + '"]').forEach(n => n.classList.add('active'));
-
-    if (name === 'home') renderFeed();
-    if (name === 'profile') renderProfile(currentUser);
-    if (name === 'friends') renderFriends();
-    if (name === 'notifications') renderNotifications();
-    if (name === 'settings') loadSettings();
+  function parseRoute() {
+    const hash = (location.hash || '#home').slice(1);
+    const parts = hash.split('/').filter(Boolean);
+    return { parts, raw: hash };
   }
 
-  navItems.forEach(item => {
-    item.addEventListener('click', (e) => {
+  function navigate(path) {
+    location.hash = path.startsWith('#') ? path : '#' + path;
+  }
+
+  function showView(name) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const el = document.getElementById('view-' + name);
+    if (el) el.classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('[data-view="' + name + '"]').forEach(n => n.classList.add('active'));
+    if (name === 'profile-edit' || name === 'user') document.querySelectorAll('[data-view="profile"]').forEach(n => n.classList.add('active'));
+    if (name === 'post' || name === 'edit') document.querySelectorAll('[data-view="home"]').forEach(n => n.classList.add('active'));
+    if (name === 'chat-dm') document.querySelectorAll('[data-view="chat"]').forEach(n => n.classList.add('active'));
+    if (name === 'community') document.querySelectorAll('[data-view="communities"]').forEach(n => n.classList.add('active'));
+  }
+
+  function route() {
+    const { parts } = parseRoute();
+    const root = parts[0] || 'home';
+    if (root === 'home' || root === 'main') { showView('home'); renderFeed(); return; }
+    if (root === 'profile' && parts[1] === 'edit') { showView('profile-edit'); loadProfileEdit(); return; }
+    if (root === 'profile') { showView('profile'); renderProfile(me); return; }
+    if (root === 'friends') { showView('friends'); renderFriends(parts[1] || 'list'); return; }
+    if (root === 'notifications') { showView('notifications'); renderNotifications(parts[1] || 'all'); return; }
+    if (root === 'user' && parts[1]) { showView('user'); renderUser(parts[1]); return; }
+    if (root === 'search') { showView('search'); return; }
+    if (root === 'create') { showView('create'); return; }
+    if (root === 'settings') { showView('settings'); return; }
+    if (root === 'post' && parts[1]) { showView('post'); openPost(parts[1]); return; }
+    if (root === 'edit' && parts[1]) { showView('edit'); openEdit(parts[1]); return; }
+    if (root === 'chat' && parts[1]) { showView('chat-dm'); openChat(parts[1]); return; }
+    if (root === 'chat') { showView('chat'); renderChatList(); return; }
+    if (root === 'communities') { showView('communities'); renderCommunities(); return; }
+    if (root === 'community' && parts[1]) { showView('community'); renderCommunity(parts[1]); return; }
+    if (root === 'share' && parts[1]) { resolveShareRoute(parts[1]); return; }
+    showView('home'); renderFeed();
+  }
+
+  window.addEventListener('hashchange', route);
+  document.querySelectorAll('[data-view]').forEach(item => {
+    item.addEventListener('click', e => {
       e.preventDefault();
-      showView(item.dataset.view);
+      const v = item.dataset.view;
+      const map = { profile:'profile', friends:'friends', notifications:'notifications', chat:'chat', search:'search', create:'create', settings:'settings', communities:'communities' };
+      navigate(map[v] || 'home');
     });
   });
 
-  function doLogout() {
-    DB.logout();
-    window.location.replace('/main');
+  function doLogout() { DB.logout(); window.location.replace('/main'); }
+  document.getElementById('logout-btn').onclick = doLogout;
+  const ml = document.getElementById('logout-btn-mobile');
+  if (ml) ml.onclick = doLogout;
+
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function letter(name) { return ((name || 'U')[0] || 'U').toUpperCase(); }
+  function time(ts) { return new Date(ts).toLocaleString(); }
+
+  function postCard(p) {
+    const isOwner = p.author === me;
+    const liked = (p.likes || []).includes(me);
+    return '<article class="post-card" data-id="' + p.id + '"><div class="post-header"><div class="avatar">' + letter(p.author) + '</div><div class="post-meta"><strong><a href="#user/' + p.author + '" style="color:inherit;text-decoration:none">@' + esc(p.author) + '</a></strong><span class="time">' + time(p.createdAt) + '</span></div></div><p class="post-content">' + esc(p.content) + '</p><div class="post-actions"><button class="btn small like-btn" data-id="' + p.id + '">' + (liked ? '♥' : '♡') + ' ' + (p.likes||[]).length + '</button><button class="btn small view-btn" data-id="' + p.id + '">💬 ' + p.comments.length + '</button><button class="btn small share-btn" data-id="' + p.id + '">↗ Share</button>' + (isOwner ? '<button class="btn small edit-btn" data-id="' + p.id + '">Edit</button><button class="btn small danger del-btn" data-id="' + p.id + '">Delete</button>' : '') + '</div></article>';
   }
-  document.getElementById('logout-btn').addEventListener('click', doLogout);
-  const mobileLogout = document.getElementById('logout-btn-mobile');
-  if (mobileLogout) mobileLogout.addEventListener('click', doLogout);
+
+  function bindPostActions(root) {
+    const r = root || document;
+    r.querySelectorAll('.view-btn').forEach(b => b.onclick = () => navigate('post/' + b.dataset.id));
+    r.querySelectorAll('.edit-btn').forEach(b => b.onclick = () => navigate('edit/' + b.dataset.id));
+    r.querySelectorAll('.del-btn').forEach(b => b.onclick = () => { if (confirm('Delete this post?')) { DB.deletePost(b.dataset.id, me); route(); } });
+    r.querySelectorAll('.like-btn').forEach(b => b.onclick = () => { DB.toggleLike(b.dataset.id, me); route(); });
+    r.querySelectorAll('.share-btn').forEach(b => b.onclick = () => { const sid = DB.createShare('post', b.dataset.id); prompt('Share link (copy):', location.origin + '/dashboard#share/' + sid); });
+  }
 
   function renderFeed() {
     const feed = document.getElementById('feed');
     const posts = DB.getPosts();
     if (!posts.length) {
-      feed.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p><p class="sub">Be the first to share something!</p><button class="btn primary" style="margin-top:18px" onclick="document.querySelectorAll(\'[data-view=create]\')[0].click()">Create Post</button></div>';
+      feed.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p><p class="sub">Be the first to share something!</p><button class="btn primary" style="margin-top:18px" id="empty-create">Create Post</button></div>';
+      const btn = document.getElementById('empty-create');
+      if (btn) btn.onclick = () => navigate('create');
       return;
     }
-    feed.innerHTML = posts.map(p => postCard(p)).join('');
-    bindPostActions();
+    feed.innerHTML = posts.map(postCard).join('');
+    bindPostActions(feed);
   }
-
-  function postCard(p) {
-    const time = new Date(p.createdAt).toLocaleString();
-    const isOwner = p.author === currentUser;
-    const letter = (p.author[0] || 'U').toUpperCase();
-    return '<article class="post-card" data-id="' + p.id + '"><div class="post-header"><div class="avatar">' + letter + '</div><div class="post-meta"><strong>@' + p.author + '</strong><span class="time">' + time + '</span></div></div><p class="post-content">' + escapeHtml(p.content) + '</p><div class="post-actions"><button class="btn small view-btn" data-id="' + p.id + '">💬 ' + p.comments.length + '</button>' + (isOwner ? '<button class="btn small edit-btn" data-id="' + p.id + '">Edit</button><button class="btn small danger del-btn" data-id="' + p.id + '">Delete</button>' : '') + '</div></article>';
-  }
-
-  function bindPostActions() {
-    document.querySelectorAll('.view-btn').forEach(btn => { btn.onclick = () => openPost(btn.dataset.id); });
-    document.querySelectorAll('.edit-btn').forEach(btn => { btn.onclick = () => openEdit(btn.dataset.id); });
-    document.querySelectorAll('.del-btn').forEach(btn => {
-      btn.onclick = () => {
-        if (confirm('Delete this post?')) {
-          DB.deletePost(btn.dataset.id, currentUser);
-          renderFeed();
-        }
-      };
-    });
-  }
-
-  let currentPostId = null;
 
   function openPost(id) {
-    currentPostId = id;
     const post = DB.getPost(id);
-    if (!post) return;
-    showView('post');
+    if (!post) { navigate('home'); return; }
     document.getElementById('single-post').innerHTML = postCard(post);
+    bindPostActions(document.getElementById('single-post'));
     const list = document.getElementById('comments-list');
-    list.innerHTML = post.comments.length
-      ? post.comments.map(c => '<div class="comment"><strong>@' + c.author + '</strong><span class="time">' + new Date(c.createdAt).toLocaleString() + '</span><p>' + escapeHtml(c.text) + '</p></div>').join('')
-      : '<div class="empty" style="padding:24px"><div class="empty-icon">💬</div><p>No comments yet</p></div>';
+    list.innerHTML = post.comments.length ? post.comments.map(c => '<div class="comment"><strong>@' + esc(c.author) + '</strong><span class="time">' + time(c.createdAt) + '</span><p>' + esc(c.text) + '</p></div>').join('') : '<div class="empty" style="padding:24px"><div class="empty-icon">💬</div><p>No comments yet</p></div>';
   }
 
-  document.getElementById('back-btn').addEventListener('click', () => showView('home'));
-
-  document.getElementById('comment-submit').addEventListener('click', () => {
+  document.getElementById('back-btn').onclick = () => navigate('home');
+  document.getElementById('comment-submit').onclick = () => {
     const text = document.getElementById('comment-input').value.trim();
-    if (!text || !currentPostId) return;
-    DB.addComment(currentPostId, currentUser, text);
+    const { parts } = parseRoute();
+    const id = parts[1];
+    if (!text || !id) return;
+    DB.addComment(id, me, text);
     document.getElementById('comment-input').value = '';
-    openPost(currentPostId);
+    openPost(id);
     updateNotifBadge();
-  });
+  };
 
-  document.getElementById('post-submit').addEventListener('click', () => {
+  document.getElementById('post-submit').onclick = () => {
     const content = document.getElementById('post-content').value.trim();
     if (!content) return;
-    DB.createPost(currentUser, content);
+    DB.createPost(me, content);
     document.getElementById('post-content').value = '';
-    showView('home');
-  });
+    navigate('home');
+  };
 
   let editingId = null;
   function openEdit(id) {
     const post = DB.getPost(id);
-    if (!post || post.author !== currentUser) return;
+    if (!post || post.author !== me) { navigate('home'); return; }
     editingId = id;
     document.getElementById('edit-content').value = post.content;
-    showView('edit');
   }
-
-  document.getElementById('edit-save').addEventListener('click', () => {
+  document.getElementById('edit-save').onclick = () => {
     const content = document.getElementById('edit-content').value.trim();
-    if (content && editingId) {
-      DB.updatePost(editingId, content, currentUser);
-      editingId = null;
-      showView('home');
-    }
-  });
-  document.getElementById('edit-cancel').addEventListener('click', () => {
-    editingId = null;
-    showView('home');
-  });
+    if (content && editingId) { DB.updatePost(editingId, content, me); editingId = null; navigate('home'); }
+  };
+  document.getElementById('edit-cancel').onclick = () => { editingId = null; navigate('home'); };
 
   function renderProfile(username) {
     const user = DB.getUser(username);
     if (!user) return;
-    const letter = ((user.displayName || user.username)[0] || 'U').toUpperCase();
-    document.getElementById('profile-header').innerHTML = '<div class="profile-card"><div class="avatar">' + letter + '</div><h2>' + escapeHtml(user.displayName || user.username) + '</h2><p class="handle">@' + user.username + '</p><p class="bio">' + escapeHtml(user.bio || 'No bio yet') + '</p><p class="meta">Joined ' + new Date(user.createdAt).toLocaleDateString() + ' • ' + user.friends.length + ' friends</p></div>';
+    const isMe = username === me;
+    document.getElementById('profile-header').innerHTML = '<div class="profile-card"><div class="avatar">' + letter(user.displayName || user.username) + '</div><h2>' + esc(user.displayName || user.username) + '</h2><p class="handle">@' + esc(user.username) + '</p><p class="bio">' + esc(user.bio || 'No bio yet') + '</p><p class="meta">Joined ' + new Date(user.createdAt).toLocaleDateString() + ' • ' + user.friends.length + ' friends</p>' + (isMe ? '<button class="btn primary" style="margin-top:14px" id="go-edit-profile">Edit Profile</button>' : '') + '</div>';
+    if (isMe) { const b = document.getElementById('go-edit-profile'); if (b) b.onclick = () => navigate('profile/edit'); }
     const posts = DB.getPosts().filter(p => p.author === username);
-    document.getElementById('profile-posts').innerHTML = posts.length
-      ? posts.map(p => postCard(p)).join('')
-      : '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p></div>';
-    bindPostActions();
+    document.getElementById('profile-posts').innerHTML = posts.length ? posts.map(postCard).join('') : '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p></div>';
+    bindPostActions(document.getElementById('profile-posts'));
   }
 
-  function renderFriends() {
-    const user = DB.getUser(currentUser);
-    const list = document.getElementById('friends-list');
-    if (!user.friends.length) {
-      list.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>No friends yet</p><p class="sub">Search and add people you know</p></div>';
+  function loadProfileEdit() {
+    const user = DB.getUser(me);
+    document.getElementById('edit-displayname').value = user.displayName || '';
+    document.getElementById('edit-bio').value = user.bio || '';
+  }
+  document.getElementById('save-profile-edit').onclick = () => {
+    const name = document.getElementById('edit-displayname').value.trim();
+    const bio = document.getElementById('edit-bio').value.trim();
+    if (name) {
+      DB.updateUser(me, { displayName: name, bio });
+      document.getElementById('mini-name').textContent = name;
+      if (av) av.textContent = name[0].toUpperCase();
+      alert('Profile saved');
+      navigate('profile');
+    }
+  };
+
+  function renderUser(username) {
+    const user = DB.getUser(username);
+    if (!user) { navigate('search'); return; }
+    const isFriend = (user.friends || []).includes(me);
+    const isMe = username === me;
+    let actions = '';
+    if (!isMe) {
+      if (isFriend) actions = '<button class="btn small" onclick="location.hash=\'#chat/' + username + '\'">Message</button>';
+      else actions = '<button class="btn small primary" id="add-friend-btn">Add Friend</button>';
+    }
+    document.getElementById('user-header').innerHTML = '<div class="profile-card"><div class="avatar">' + letter(user.displayName || user.username) + '</div><h2>' + esc(user.displayName || user.username) + '</h2><p class="handle">@' + esc(user.username) + '</p><p class="bio">' + esc(user.bio || 'No bio yet') + '</p><p class="meta">' + user.friends.length + ' friends</p><div style="margin-top:14px;display:flex;gap:8px;justify-content:center">' + actions + '</div></div>';
+    const af = document.getElementById('add-friend-btn');
+    if (af) af.onclick = () => { const r = DB.sendFriendRequest(me, username); alert(r.ok ? 'Friend request sent!' : r.error); updateNotifBadge(); };
+    const posts = DB.getPosts().filter(p => p.author === username);
+    document.getElementById('user-posts').innerHTML = posts.length ? posts.map(postCard).join('') : '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p></div>';
+    bindPostActions(document.getElementById('user-posts'));
+  }
+
+  document.querySelectorAll('[data-ftab]').forEach(t => {
+    t.onclick = () => {
+      document.querySelectorAll('[data-ftab]').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      renderFriends(t.dataset.ftab);
+    };
+  });
+
+  function renderFriends(tab) {
+    tab = tab || 'list';
+    const panel = document.getElementById('friends-panel');
+    document.querySelectorAll('[data-ftab]').forEach(x => x.classList.toggle('active', x.dataset.ftab === tab));
+    if (tab === 'requests') {
+      const reqs = DB.getFriendRequests(me);
+      if (!reqs.length) { panel.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>No friend requests</p></div>'; return; }
+      panel.innerHTML = reqs.map(r => '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(r.from) + '</div><div style="flex:1"><strong>@' + esc(r.from) + '</strong></div><button class="btn small primary accept-fr" data-id="' + r.id + '">Accept</button><button class="btn small reject-fr" data-id="' + r.id + '">Reject</button></div>').join('');
+      panel.querySelectorAll('.accept-fr').forEach(b => b.onclick = () => { DB.acceptFriendRequest(b.dataset.id, me); renderFriends('requests'); updateNotifBadge(); });
+      panel.querySelectorAll('.reject-fr').forEach(b => b.onclick = () => { DB.rejectFriendRequest(b.dataset.id, me); renderFriends('requests'); });
       return;
     }
-    list.innerHTML = user.friends.map(f => {
+    if (tab === 'pending') {
+      const sent = DB.getPendingSent(me);
+      if (!sent.length) { panel.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><p>No pending requests</p></div>'; return; }
+      panel.innerHTML = sent.map(r => '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(r.to) + '</div><div style="flex:1"><strong>@' + esc(r.to) + '</strong><span class="time"> Pending</span></div></div>').join('');
+      return;
+    }
+    const friends = DB.getFriends(me);
+    if (!friends.length) { panel.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>No friends yet</p><p class="sub">Search and add people</p></div>'; return; }
+    panel.innerHTML = friends.map(f => {
       const u = DB.getUser(f);
-      const letter = (f[0] || 'U').toUpperCase();
-      return '<div class="list-item"><div class="avatar" style="width:36px;height:36px;font-size:0.85rem">' + letter + '</div><div style="flex:1"><strong>@' + f + '</strong>' + (u ? '<span style="color:var(--muted);font-size:0.85rem"> · ' + u.displayName + '</span>' : '') + '</div><button class="btn small" onclick="showUserProfile(\'' + f + '\')">View</button></div>';
+      return '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(f) + '</div><div style="flex:1"><strong>@' + esc(f) + '</strong>' + (u ? '<span style="color:var(--muted);font-size:0.85rem"> · ' + esc(u.displayName) + '</span>' : '') + '</div><button class="btn small" onclick="location.hash=\'#user/' + f + '\'">View</button><button class="btn small" onclick="location.hash=\'#chat/' + f + '\'">Chat</button></div>';
     }).join('');
   }
 
-  window.showUserProfile = function (username) {
-    renderProfile(username);
-    showView('profile');
-  };
+  document.querySelectorAll('[data-ntab]').forEach(t => {
+    t.onclick = () => {
+      document.querySelectorAll('[data-ntab]').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      renderNotifications(t.dataset.ntab);
+    };
+  });
 
-  function renderNotifications() {
-    const notifs = DB.getNotifications(currentUser);
-    DB.markNotifsRead(currentUser);
+  function renderNotifications(type) {
+    type = type || 'all';
+    document.querySelectorAll('[data-ntab]').forEach(x => x.classList.toggle('active', x.dataset.ntab === type));
+    const filter = type === 'all' ? null : type;
+    const notifs = DB.getNotifications(me, filter);
+    DB.markNotifsRead(me, filter);
     updateNotifBadge();
     const list = document.getElementById('notif-list');
-    if (!notifs.length) {
-      list.innerHTML = '<div class="empty"><div class="empty-icon">🔔</div><p>No notifications</p></div>';
-      return;
-    }
-    list.innerHTML = notifs.map(n => '<div class="list-item ' + (n.read ? '' : 'unread') + '"><div style="flex:1"><p>' + escapeHtml(n.message) + '</p><span class="time">' + new Date(n.createdAt).toLocaleString() + '</span></div>' + (n.postId ? '<button class="btn small" onclick="openPost(\'' + n.postId + '\')">View</button>' : '') + '</div>').join('');
+    if (!notifs.length) { list.innerHTML = '<div class="empty"><div class="empty-icon">🔔</div><p>No notifications</p></div>'; return; }
+    list.innerHTML = notifs.map(n => '<div class="list-item ' + (n.read ? '' : 'unread') + '"><div style="flex:1"><p>' + esc(n.message) + '</p><span class="time">' + time(n.createdAt) + ' · ' + esc(n.type) + '</span></div></div>').join('');
   }
 
   function updateNotifBadge() {
-    const notifs = DB.getNotifications(currentUser).filter(n => !n.read);
-    ['notif-badge', 'notif-badge-m'].forEach(id => {
-      const badge = document.getElementById(id);
-      if (!badge) return;
-      if (notifs.length) {
-        badge.textContent = notifs.length;
-        badge.classList.remove('hidden');
-      } else {
-        badge.classList.add('hidden');
-      }
-    });
+    const count = DB.getNotifications(me).filter(n => !n.read).length;
+    const badge = document.getElementById('notif-badge');
+    if (badge) {
+      if (count) { badge.textContent = count; badge.classList.remove('hidden'); }
+      else badge.classList.add('hidden');
+    }
   }
 
-  document.getElementById('search-input').addEventListener('input', (e) => {
-    const q = e.target.value;
-    const results = DB.search(q);
+  document.getElementById('search-input').addEventListener('input', e => {
+    const results = DB.search(e.target.value);
     const box = document.getElementById('search-results');
     let html = '';
     if (results.users.length) {
       html += '<h3>Users</h3>';
-      html += results.users.map(u => {
-        const letter = (u.username[0] || 'U').toUpperCase();
-        return '<div class="list-item"><div class="avatar" style="width:36px;height:36px;font-size:0.85rem">' + letter + '</div><div style="flex:1"><strong>@' + u.username + '</strong><span style="color:var(--muted);font-size:0.85rem"> · ' + escapeHtml(u.displayName) + '</span></div><button class="btn small" onclick="showUserProfile(\'' + u.username + '\')">View</button>' + (u.username !== currentUser ? '<button class="btn small" onclick="addFriend(\'' + u.username + '\')">Add</button>' : '') + '</div>';
-      }).join('');
+      html += results.users.map(u => '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(u.username) + '</div><div style="flex:1"><strong>@' + esc(u.username) + '</strong><span style="color:var(--muted);font-size:0.85rem"> · ' + esc(u.displayName) + '</span></div><button class="btn small" onclick="location.hash=\'#user/' + u.username + '\'">View</button>' + (u.username !== me ? '<button class="btn small" onclick="addFriendQuick(\'' + u.username + '\')">Add</button>' : '') + '</div>').join('');
     }
-    if (results.posts.length) {
-      html += '<h3>Posts</h3>';
-      html += results.posts.map(p => postCard(p)).join('');
+    if (results.posts.length) { html += '<h3>Posts</h3>'; html += results.posts.map(postCard).join(''); }
+    if (results.communities.length) {
+      html += '<h3>Communities</h3>';
+      html += results.communities.map(c => '<div class="list-item"><div style="flex:1"><strong>' + esc(c.name) + '</strong><span class="time"> · ' + c.members.length + ' members</span></div><button class="btn small" onclick="location.hash=\'#community/' + c.id + '\'">Open</button></div>').join('');
     }
     if (!html) html = '<div class="empty"><div class="empty-icon">🔍</div><p>No results</p></div>';
     box.innerHTML = html;
-    bindPostActions();
+    bindPostActions(box);
   });
 
-  window.addFriend = function (friend) {
-    if (DB.addFriend(currentUser, friend)) {
-      alert('Friend added!');
-      updateNotifBadge();
-    }
+  window.addFriendQuick = function (username) {
+    const r = DB.sendFriendRequest(me, username);
+    alert(r.ok ? 'Request sent!' : r.error);
+    updateNotifBadge();
   };
 
-  window.openPost = openPost;
-
-  function loadSettings() {
-    const user = DB.getUser(currentUser);
-    document.getElementById('set-displayname').value = user.displayName || '';
+  function renderChatList() {
+    const chats = DB.listChats(me);
+    const list = document.getElementById('chat-list');
+    if (!chats.length) { list.innerHTML = '<div class="empty"><div class="empty-icon">💬</div><p>No chats yet</p><p class="sub">Message a friend from their profile</p></div>'; return; }
+    list.innerHTML = chats.map(c => {
+      const other = c.members.find(m => m !== me) || c.members[0];
+      const last = c.messages.length ? c.messages[c.messages.length - 1] : null;
+      return '<div class="list-item" style="cursor:pointer" onclick="location.hash=\'#chat/' + other + '\'"><div class="avatar" style="width:36px;height:36px">' + letter(other) + '</div><div style="flex:1"><strong>@' + esc(other) + '</strong>' + (last ? '<p style="font-size:0.85rem;color:var(--muted);margin:0">' + esc(last.text.slice(0, 40)) + '</p>' : '') + '</div></div>';
+    }).join('');
   }
 
-  document.getElementById('save-profile').addEventListener('click', () => {
-    const name = document.getElementById('set-displayname').value.trim();
-    if (name) {
-      DB.updateUser(currentUser, { displayName: name });
-      document.getElementById('mini-name').textContent = name;
-      const av = document.getElementById('sidebar-avatar');
-      if (av) av.textContent = name[0].toUpperCase();
-      alert('Saved');
-    }
-  });
+  let currentChatId = null;
+  function openChat(withUser) {
+    const chat = DB.getOrCreateChat(me, withUser);
+    currentChatId = chat.id;
+    document.getElementById('chat-title').textContent = '@' + withUser;
+    renderMessages(chat);
+  }
 
-  document.getElementById('save-pass').addEventListener('click', () => {
+  function renderMessages(chat) {
+    const box = document.getElementById('chat-messages');
+    if (!chat.messages.length) { box.innerHTML = '<div class="empty" style="padding:24px"><p>No messages yet. Say hi!</p></div>'; return; }
+    box.innerHTML = chat.messages.map(m => '<div class="chat-bubble ' + (m.from === me ? 'mine' : 'theirs') + '"><div class="chat-text">' + esc(m.text) + '</div><div class="chat-time">' + time(m.createdAt) + '</div></div>').join('');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  document.getElementById('chat-back').onclick = () => navigate('chat');
+  document.getElementById('chat-send').onclick = () => {
+    const text = document.getElementById('chat-input').value.trim();
+    if (!text || !currentChatId) return;
+    DB.sendMessage(currentChatId, me, text);
+    document.getElementById('chat-input').value = '';
+    renderMessages(DB.getChat(currentChatId));
+    updateNotifBadge();
+  };
+  document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('chat-send').click(); });
+
+  function renderCommunities() {
+    const list = DB.listCommunities();
+    const el = document.getElementById('communities-list');
+    if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🌐</div><p>No communities yet</p></div>'; return; }
+    el.innerHTML = list.map(c => '<div class="list-item"><div style="flex:1"><strong>' + esc(c.name) + '</strong><p style="font-size:0.85rem;color:var(--muted);margin:0">' + esc(c.description || '') + ' · ' + c.members.length + ' members</p></div><button class="btn small" onclick="location.hash=\'#community/' + c.id + '\'">Open</button></div>').join('');
+  }
+
+  document.getElementById('create-community-btn').onclick = () => {
+    const name = prompt('Community name:');
+    if (!name) return;
+    const desc = prompt('Description (optional):') || '';
+    const r = DB.createCommunity(me, name, desc);
+    if (r.ok) { alert('Created!'); navigate('community/' + r.community.id); }
+    else alert(r.error);
+  };
+
+  function renderCommunity(id) {
+    const c = DB.getCommunity(id);
+    if (!c) { navigate('communities'); return; }
+    document.getElementById('community-header').innerHTML = '<div class="profile-card"><h2>' + esc(c.name) + '</h2><p class="bio">' + esc(c.description || '') + '</p><p class="meta">' + c.members.length + ' members · Owner @' + esc(c.owner) + '</p>' + (!c.members.includes(me) ? '<button class="btn primary" style="margin-top:12px" id="join-com">Join</button>' : '<span class="meta" style="display:block;margin-top:8px">You are a member</span>') + '</div>';
+    const join = document.getElementById('join-com');
+    if (join) join.onclick = () => { DB.joinCommunity(id, me); renderCommunity(id); };
+    document.getElementById('community-body').innerHTML = '<p class="meta" style="margin-top:8px">Categories: ' + c.categories.map(cat => esc(cat.name)).join(', ') + '</p>';
+  }
+  document.getElementById('com-back').onclick = () => navigate('communities');
+
+  function resolveShareRoute(shareId) {
+    const s = DB.resolveShare(shareId);
+    if (!s) { alert('Share link invalid or expired'); navigate('home'); return; }
+    if (s.type === 'post') navigate('post/' + s.targetId);
+    else if (s.type === 'community') navigate('community/' + s.targetId);
+    else navigate('home');
+  }
+
+  document.getElementById('save-pass').onclick = () => {
     const pass = document.getElementById('set-newpass').value;
-    if (DB.changePassword(currentUser, pass)) {
-      document.getElementById('set-newpass').value = '';
-      alert('Password updated');
-    } else {
-      alert('Password too short (min 6)');
-    }
-  });
+    if (DB.changePassword(me, pass)) { document.getElementById('set-newpass').value = ''; alert('Password updated'); }
+    else alert('Password too short (min 6)');
+  };
+  document.getElementById('clear-data').onclick = () => {
+    if (confirm('Erase all local data on this device?')) { DB.clearAll(); window.location.replace('/main'); }
+  };
 
-  document.getElementById('clear-data').addEventListener('click', () => {
-    if (confirm('This will erase all local accounts and posts on this device. Continue?')) {
-      DB.clearAll();
-      window.location.replace('/main');
-    }
-  });
-
-  function escapeHtml(str) {
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
+  const style = document.createElement('style');
+  style.textContent = '.chat-messages{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;padding:8px 0 16px}.chat-bubble{max-width:80%;padding:10px 14px;border-radius:14px;font-size:0.94rem}.chat-bubble.mine{align-self:flex-end;background:linear-gradient(135deg,#8b7cff,#6c5ce7);color:#fff}.chat-bubble.theirs{align-self:flex-start;background:var(--card);border:1px solid var(--border)}.chat-time{font-size:0.7rem;opacity:0.7;margin-top:4px}.chat-input-row{display:flex;gap:8px;position:sticky;bottom:0;padding-top:8px;background:var(--bg)}.chat-input-row input{flex:1;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);outline:none}.chat-input-row input:focus{border-color:var(--primary)}';
+  document.head.appendChild(style);
 
   updateNotifBadge();
-  showView('home');
+  route();
 })();
