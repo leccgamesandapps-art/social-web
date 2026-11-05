@@ -21,12 +21,12 @@
   const views = document.querySelectorAll('.view');
   const navItems = document.querySelectorAll('.nav-item');
 
-  function show showView(name) {
+  function showView(name) {
     views.forEach(v => v.classList.remove('active'));
     navItems.forEach(n => n.classList.remove('active'));
     const el = document.getElementById('view-' + name);
     if (el) el.classList.add('active');
-    document.querySelectorAll(`[data-view="${name}"]`).forEach(n => n.classList.add('active'));
+    document.querySelectorAll('[data-view="' + name + '"]').forEach(n => n.classList.add('active'));
 
     if (name === 'home') renderFeed();
     if (name === 'profile') renderProfile(currentUser);
@@ -54,13 +54,7 @@
     const feed = document.getElementById('feed');
     const posts = DB.getPosts();
     if (!posts.length) {
-      feed.innerHTML = `
-        <div class="empty">
-          <div class="empty-icon">📝</div>
-          <p>No posts yet</p>
-          <p class="sub">Be the first to share something!</p>
-          <button class="btn primary" style="margin-top:18px" onclick="document.querySelectorAll('[data-view=create]')[0].click()">Create Post</button>
-        </div>`;
+      feed.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p><p class="sub">Be the first to share something!</p><button class="btn primary" style="margin-top:18px" onclick="document.querySelectorAll(\'[data-view=create]\')[0].click()">Create Post</button></div>';
       return;
     }
     feed.innerHTML = posts.map(p => postCard(p)).join('');
@@ -71,34 +65,12 @@
     const time = new Date(p.createdAt).toLocaleString();
     const isOwner = p.author === currentUser;
     const letter = (p.author[0] || 'U').toUpperCase();
-    return `
-      <article class="post-card" data-id="${p.id}">
-        <div class="post-header">
-          <div class="avatar">${letter}</div>
-          <div class="post-meta">
-            <strong>@${p.author}</strong>
-            <span class="time">${time}</span>
-          </div>
-        </div>
-        <p class="post-content">${escapeHtml(p.content)}</p>
-        <div class="post-actions">
-          <button class="btn small view-btn" data-id="${p.id}">💬 ${p.comments.length}</button>
-          ${isOwner ? `
-            <button class="btn small edit-btn" data-id="${p.id}">Edit</button>
-            <button class="btn small danger del-btn" data-id="${p.id}">Delete</button>
-          ` : ''}
-        </div>
-      </article>
-    `;
+    return '<article class="post-card" data-id="' + p.id + '"><div class="post-header"><div class="avatar">' + letter + '</div><div class="post-meta"><strong>@' + p.author + '</strong><span class="time">' + time + '</span></div></div><p class="post-content">' + escapeHtml(p.content) + '</p><div class="post-actions"><button class="btn small view-btn" data-id="' + p.id + '">💬 ' + p.comments.length + '</button>' + (isOwner ? '<button class="btn small edit-btn" data-id="' + p.id + '">Edit</button><button class="btn small danger del-btn" data-id="' + p.id + '">Delete</button>' : '') + '</div></article>';
   }
 
   function bindPostActions() {
-    document.querySelectorAll('.view-btn').forEach(btn => {
-      btn.onclick = () => openPost(btn.dataset.id);
-    });
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-      btn.onclick = () => openEdit(btn.dataset.id);
-    });
+    document.querySelectorAll('.view-btn').forEach(btn => { btn.onclick = () => openPost(btn.dataset.id); });
+    document.querySelectorAll('.edit-btn').forEach(btn => { btn.onclick = () => openEdit(btn.dataset.id); });
     document.querySelectorAll('.del-btn').forEach(btn => {
       btn.onclick = () => {
         if (confirm('Delete this post?')) {
@@ -119,13 +91,7 @@
     document.getElementById('single-post').innerHTML = postCard(post);
     const list = document.getElementById('comments-list');
     list.innerHTML = post.comments.length
-      ? post.comments.map(c => `
-          <div class="comment">
-            <strong>@${c.author}</strong>
-            <span class="time">${new Date(c.createdAt).toLocaleString()}</span>
-            <p>${escapeHtml(c.text)}</p>
-          </div>
-        `).join('')
+      ? post.comments.map(c => '<div class="comment"><strong>@' + c.author + '</strong><span class="time">' + new Date(c.createdAt).toLocaleString() + '</span><p>' + escapeHtml(c.text) + '</p></div>').join('')
       : '<div class="empty" style="padding:24px"><div class="empty-icon">💬</div><p>No comments yet</p></div>';
   }
 
@@ -174,15 +140,7 @@
     const user = DB.getUser(username);
     if (!user) return;
     const letter = ((user.displayName || user.username)[0] || 'U').toUpperCase();
-    document.getElementById('profile-header').innerHTML = `
-      <div class="profile-card">
-        <div class="avatar">${letter}</div>
-        <h2>${escapeHtml(user.displayName || user.username)}</h2>
-        <p class="handle">@${user.username}</p>
-        <p class="bio">${escapeHtml(user.bio || 'No bio yet')}</p>
-        <p class="meta">Joined ${new Date(user.createdAt).toLocaleDateString()} • ${user.friends.length} friends</p>
-      </div>
-    `;
+    document.getElementById('profile-header').innerHTML = '<div class="profile-card"><div class="avatar">' + letter + '</div><h2>' + escapeHtml(user.displayName || user.username) + '</h2><p class="handle">@' + user.username + '</p><p class="bio">' + escapeHtml(user.bio || 'No bio yet') + '</p><p class="meta">Joined ' + new Date(user.createdAt).toLocaleDateString() + ' • ' + user.friends.length + ' friends</p></div>';
     const posts = DB.getPosts().filter(p => p.author === username);
     document.getElementById('profile-posts').innerHTML = posts.length
       ? posts.map(p => postCard(p)).join('')
@@ -194,25 +152,13 @@
     const user = DB.getUser(currentUser);
     const list = document.getElementById('friends-list');
     if (!user.friends.length) {
-      list.innerHTML = `
-        <div class="empty">
-          <div class="empty-icon">👥</div>
-          <p>No friends yet</p>
-          <p class="sub">Search and add people you know</p>
-        </div>`;
+      list.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>No friends yet</p><p class="sub">Search and add people you know</p></div>';
       return;
     }
     list.innerHTML = user.friends.map(f => {
       const u = DB.getUser(f);
       const letter = (f[0] || 'U').toUpperCase();
-      return `<div class="list-item">
-        <div class="avatar" style="width:36px;height:36px;font-size:0.85rem">${letter}</div>
-        <div style="flex:1">
-          <strong>@${f}</strong>
-          ${u ? `<span style="color:var(--muted);font-size:0.85rem"> · ${u.displayName}</span>` : ''}
-        </div>
-        <button class="btn small" onclick="showUserProfile('${f}')">View</button>
-      </div>`;
+      return '<div class="list-item"><div class="avatar" style="width:36px;height:36px;font-size:0.85rem">' + letter + '</div><div style="flex:1"><strong>@' + f + '</strong>' + (u ? '<span style="color:var(--muted);font-size:0.85rem"> · ' + u.displayName + '</span>' : '') + '</div><button class="btn small" onclick="showUserProfile(\'' + f + '\')">View</button></div>';
     }).join('');
   }
 
@@ -227,31 +173,16 @@
     updateNotifBadge();
     const list = document.getElementById('notif-list');
     if (!notifs.length) {
-      list.innerHTML = `
-        <div class="empty">
-          <div class="empty-icon">🔔</div>
-          <p>No notifications</p>
-        </div>`;
+      list.innerHTML = '<div class="empty"><div class="empty-icon">🔔</div><p>No notifications</p></div>';
       return;
     }
-    list.innerHTML = notifs.map(n => `
-      <div class="list-item ${n.read ? '' : 'unread'}">
-        <div style="flex:1">
-          <p>${escapeHtml(n.message)}</p>
-          <span class="time">${new Date(n.createdAt).toLocaleString()}</span>
-        </div>
-        ${n.postId ? `<button class="btn small" onclick="openPost('${n.postId}')">View</button>` : ''}
-      </div>
-    `).join('');
+    list.innerHTML = notifs.map(n => '<div class="list-item ' + (n.read ? '' : 'unread') + '"><div style="flex:1"><p>' + escapeHtml(n.message) + '</p><span class="time">' + new Date(n.createdAt).toLocaleString() + '</span></div>' + (n.postId ? '<button class="btn small" onclick="openPost(\'' + n.postId + '\')">View</button>' : '') + '</div>').join('');
   }
 
   function updateNotifBadge() {
     const notifs = DB.getNotifications(currentUser).filter(n => !n.read);
-    const badges = [
-      document.getElementById('notif-badge'),
-      document.getElementById('notif-badge-m')
-    ];
-    badges.forEach(badge => {
+    ['notif-badge', 'notif-badge-m'].forEach(id => {
+      const badge = document.getElementById(id);
       if (!badge) return;
       if (notifs.length) {
         badge.textContent = notifs.length;
@@ -271,16 +202,7 @@
       html += '<h3>Users</h3>';
       html += results.users.map(u => {
         const letter = (u.username[0] || 'U').toUpperCase();
-        return `
-        <div class="list-item">
-          <div class="avatar" style="width:36px;height:36px;font-size:0.85rem">${letter}</div>
-          <div style="flex:1">
-            <strong>@${u.username}</strong>
-            <span style="color:var(--muted);font-size:0.85rem"> · ${escapeHtml(u.displayName)}</span>
-          </div>
-          <button class="btn small" onclick="showUserProfile('${u.username}')">View</button>
-          ${u.username !== currentUser ? `<button class="btn small" onclick="addFriend('${u.username}')">Add</button>` : ''}
-        </div>`;
+        return '<div class="list-item"><div class="avatar" style="width:36px;height:36px;font-size:0.85rem">' + letter + '</div><div style="flex:1"><strong>@' + u.username + '</strong><span style="color:var(--muted);font-size:0.85rem"> · ' + escapeHtml(u.displayName) + '</span></div><button class="btn small" onclick="showUserProfile(\'' + u.username + '\')">View</button>' + (u.username !== currentUser ? '<button class="btn small" onclick="addFriend(\'' + u.username + '\')">Add</button>' : '') + '</div>';
       }).join('');
     }
     if (results.posts.length) {
@@ -335,11 +257,7 @@
   });
 
   function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   updateNotifBadge();
