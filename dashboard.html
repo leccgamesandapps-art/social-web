@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Dashboard • Social Web</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script>
+    (function(){
+      document.addEventListener('contextmenu', e => e.preventDefault());
+      document.addEventListener('keydown', e => {
+        if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key)) || (e.ctrlKey && e.key === 'U')) {
+          e.preventDefault(); e.stopPropagation();
+        }
+      });
+      let devtools = {open: false};
+      const threshold = 160;
+      setInterval(() => {
+        const widthDiff = window.outerWidth - window.innerWidth > threshold;
+        const heightDiff = window.outerHeight - window.innerHeight > threshold;
+        if (widthDiff || heightDiff) {
+          if (!devtools.open) {
+            devtools.open = true;
+            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#fff;font-family:sans-serif;"><h2>Access restricted</h2></div>';
+          }
+        } else {
+          devtools.open = false;
+        }
+      }, 500);
+    })();
+  </script>
+</head>
+<body>
+  <div id="app" class="app hidden">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">Social Web</div>
+      <nav>
+        <a href="#" data-view="home" class="nav-item active">🏠 Home</a>
+        <a href="#" data-view="profile" class="nav-item">👤 Profile</a>
+        <a href="#" data-view="friends" class="nav-item">👥 Friends</a>
+        <a href="#" data-view="notifications" class="nav-item">🔔 Notifications <span id="notif-badge" class="badge hidden">0</span></a>
+        <a href="#" data-view="search" class="nav-item">🔍 Search</a>
+        <a href="#" data-view="create" class="nav-item">✏️ Create</a>
+        <a href="#" data-view="settings" class="nav-item">⚙️ Settings</a>
+      </nav>
+      <div class="user-mini" id="user-mini">
+        <span id="mini-name">User</span>
+        <button id="logout-btn" class="btn small">Logout</button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-content">
+      <!-- Home / Feed -->
+      <section id="view-home" class="view active">
+        <h2>Feed</h2>
+        <div id="feed" class="feed"></div>
+      </section>
+
+      <!-- Profile -->
+      <section id="view-profile" class="view">
+        <div id="profile-header"></div>
+        <div id="profile-posts" class="feed"></div>
+      </section>
+
+      <!-- Friends -->
+      <section id="view-friends" class="view">
+        <h2>Friends</h2>
+        <div id="friends-list" class="list"></div>
+      </section>
+
+      <!-- Notifications -->
+      <section id="view-notifications" class="view">
+        <h2>Notifications</h2>
+        <div id="notif-list" class="list"></div>
+      </section>
+
+      <!-- Search -->
+      <section id="view-search" class="view">
+        <h2>Search</h2>
+        <input type="text" id="search-input" placeholder="Search users or posts..." />
+        <div id="search-results" class="list"></div>
+      </section>
+
+      <!-- Create Post -->
+      <section id="view-create" class="view">
+        <h2>Create Post</h2>
+        <textarea id="post-content" placeholder="What's on your mind?" rows="5"></textarea>
+        <button id="post-submit" class="btn primary">Post</button>
+      </section>
+
+      <!-- Settings -->
+      <section id="view-settings" class="view">
+        <h2>Settings</h2>
+        <div class="settings-group">
+          <label>Display Name</label>
+          <input type="text" id="set-displayname" />
+          <button id="save-profile" class="btn">Save</button>
+        </div>
+        <div class="settings-group">
+          <label>Change Password</label>
+          <input type="password" id="set-newpass" placeholder="New password" />
+          <button id="save-pass" class="btn">Update Password</button>
+        </div>
+        <div class="settings-group danger">
+          <button id="clear-data" class="btn danger">Clear Local Data</button>
+        </div>
+      </section>
+
+      <!-- View Post / Comments -->
+      <section id="view-post" class="view">
+        <button id="back-btn" class="btn small">← Back</button>
+        <div id="single-post"></div>
+        <div class="comments-section">
+          <h3>Comments</h3>
+          <div id="comments-list"></div>
+          <textarea id="comment-input" placeholder="Write a comment..." rows="2"></textarea>
+          <button id="comment-submit" class="btn primary">Comment</button>
+        </div>
+      </section>
+
+      <!-- Edit Post -->
+      <section id="view-edit" class="view">
+        <h2>Edit Post</h2>
+        <textarea id="edit-content" rows="5"></textarea>
+        <button id="edit-save" class="btn primary">Save</button>
+        <button id="edit-cancel" class="btn">Cancel</button>
+      </section>
+    </main>
+  </div>
+
+  <div id="guard" class="loader-screen">
+    <div class="spinner"></div>
+    <p>Checking session...</p>
+  </div>
+
+  <script src="/db.js"></script>
+  <script src="/auth.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
