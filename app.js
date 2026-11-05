@@ -21,7 +21,7 @@
   const views = document.querySelectorAll('.view');
   const navItems = document.querySelectorAll('.nav-item');
 
-  function showView(name) {
+  function show showView(name) {
     views.forEach(v => v.classList.remove('active'));
     navItems.forEach(n => n.classList.remove('active'));
     const el = document.getElementById('view-' + name);
@@ -58,8 +58,8 @@
         <div class="empty">
           <div class="empty-icon">📝</div>
           <p>No posts yet</p>
-          <p style="margin-top:6px;font-size:0.88rem">Be the first to share something!</p>
-          <button class="btn primary" style="margin-top:16px" onclick="document.querySelector('[data-view=create]').click()">Create Post</button>
+          <p class="sub">Be the first to share something!</p>
+          <button class="btn primary" style="margin-top:18px" onclick="document.querySelectorAll('[data-view=create]')[0].click()">Create Post</button>
         </div>`;
       return;
     }
@@ -198,7 +198,7 @@
         <div class="empty">
           <div class="empty-icon">👥</div>
           <p>No friends yet</p>
-          <p style="margin-top:6px;font-size:0.88rem">Search and add people you know</p>
+          <p class="sub">Search and add people you know</p>
         </div>`;
       return;
     }
