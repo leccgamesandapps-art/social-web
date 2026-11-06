@@ -231,7 +231,7 @@ const DB = {
   listChats(username) {
     const data = this._load();
     const u = username.toLowerCase();
-    return Object.values(data.chats).filter(c => c.members.includes(u)).sort((a, b) => {
+    return Object.values(data.chats).filter(c => (c.members || []).includes(u)).sort((a, b) => {
       const aT = a.messages.length ? a.messages[a.messages.length - 1].createdAt : a.createdAt;
       const bT = b.messages.length ? b.messages[b.messages.length - 1].createdAt : b.createdAt;
       return bT - aT;
@@ -272,7 +272,7 @@ const DB = {
     const c = data.communities[communityId];
     if (!c) return false;
     const u = username.toLowerCase();
-    if (!c.members.includes(u)) c.members.push(u);
+    if (!c.members.map(m => String(m).toLowerCase()).includes(u)) c.members.push(u);
     if (!c.memberRoles) c.memberRoles = {};
     if (!c.memberRoles[u]) c.memberRoles[u] = 'member';
     if (!c.roles) c.roles = { owner: { id: 'owner', name: 'Owner', permissions: ['all'] }, member: { id: 'member', name: 'Member', permissions: ['chat', 'view'] } };
@@ -283,7 +283,7 @@ const DB = {
   updateCommunity(id, updates, byUser) {
     const data = this._load();
     const c = data.communities[id];
-    if (!c || c.owner !== byUser.toLowerCase()) return false;
+    if (!c || String(c.owner).toLowerCase() !== String(byUser).toLowerCase()) return false;
     if (updates.name !== undefined) c.name = updates.name;
     if (updates.description !== undefined) c.description = updates.description;
     this._save(data);
@@ -293,7 +293,7 @@ const DB = {
   addCommunityRole(communityId, roleName, permissions, byUser) {
     const data = this._load();
     const c = data.communities[communityId];
-    if (!c || c.owner !== byUser.toLowerCase()) return { ok: false, error: 'Not allowed' };
+    if (!c || String(c.owner).toLowerCase() !== String(byUser).toLowerCase()) return { ok: false, error: 'Not allowed' };
     if (!c.roles) c.roles = {};
     const rid = roleName.toLowerCase().replace(/[^a-z0-9]+/g, '-') || this._id('role');
     if (c.roles[rid]) return { ok: false, error: 'Role exists' };
@@ -305,7 +305,7 @@ const DB = {
   editCommunityRole(communityId, roleId, updates, byUser) {
     const data = this._load();
     const c = data.communities[communityId];
-    if (!c || c.owner !== byUser.toLowerCase()) return false;
+    if (!c || String(c.owner).toLowerCase() !== String(byUser).toLowerCase()) return false;
     if (!c.roles || !c.roles[roleId] || roleId === 'owner') return false;
     if (updates.name) c.roles[roleId].name = updates.name;
     if (updates.permissions) c.roles[roleId].permissions = updates.permissions;
@@ -316,7 +316,7 @@ const DB = {
   deleteCommunityRole(communityId, roleId, byUser) {
     const data = this._load();
     const c = data.communities[communityId];
-    if (!c || c.owner !== byUser.toLowerCase()) return false;
+    if (!c || String(c.owner).toLowerCase() !== String(byUser).toLowerCase()) return false;
     if (!c.roles || !c.roles[roleId] || roleId === 'owner' || roleId === 'member') return false;
     delete c.roles[roleId];
     if (c.memberRoles) Object.keys(c.memberRoles).forEach(m => { if (c.memberRoles[m] === roleId) c.memberRoles[m] = 'member'; });
@@ -327,7 +327,7 @@ const DB = {
   addCommunityCategory(communityId, name, byUser) {
     const data = this._load();
     const c = data.communities[communityId];
-    if (!c || c.owner !== byUser.toLowerCase()) return { ok: false, error: 'Not allowed' };
+    if (!c || String(c.owner).toLowerCase() !== String(byUser).toLowerCase()) return { ok: false, error: 'Not allowed' };
     if (!c.categories) c.categories = [];
     const cid = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || this._id('cat');
     if (c.categories.find(x => x.id === cid)) return { ok: false, error: 'Exists' };
@@ -339,7 +339,7 @@ const DB = {
   editCommunityCategory(communityId, categoryId, name, byUser) {
     const data = this._load();
     const c = data.communities[communityId];
-    if (!c || c.owner !== byUser.toLowerCase()) return false;
+    if (!c || String(c.owner).toLowerCase() !== String(byUser).toLowerCase()) return false;
     const cat = (c.categories || []).find(x => x.id === categoryId);
     if (!cat) return false;
     cat.name = name;
@@ -350,7 +350,7 @@ const DB = {
   deleteCommunityCategory(communityId, categoryId, byUser) {
     const data = this._load();
     const c = data.communities[communityId];
-    if (!c || c.owner !== byUser.toLowerCase()) return false;
+    if (!c || String(c.owner).toLowerCase() !== String(byUser).toLowerCase()) return false;
     if (categoryId === 'general') return false;
     c.categories = (c.categories || []).filter(x => x.id !== categoryId);
     this._save(data);
@@ -360,7 +360,7 @@ const DB = {
   addCommunityChat(communityId, name, categoryId, byUser) {
     const data = this._load();
     const c = data.communities[communityId];
-    if (!c || c.owner !== byUser.toLowerCase()) return { ok: false, error: 'Not allowed' };
+    if (!c || String(c.owner).toLowerCase() !== String(byUser).toLowerCase()) return { ok: false, error: 'Not allowed' };
     if (!c.chats) c.chats = {};
     const chatId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || this._id('ch');
     if (c.chats[chatId]) return { ok: false, error: 'Chat exists' };
@@ -372,7 +372,7 @@ const DB = {
   editCommunityChat(communityId, chatId, updates, byUser) {
     const data = this._load();
     const c = data.communities[communityId];
-    if (!c || c.owner !== byUser.toLowerCase()) return false;
+    if (!c || String(c.owner).toLowerCase() !== String(byUser).toLowerCase()) return false;
     if (!c.chats || !c.chats[chatId]) return false;
     if (updates.name) c.chats[chatId].name = updates.name;
     if (updates.categoryId) c.chats[chatId].categoryId = updates.categoryId;
@@ -383,7 +383,7 @@ const DB = {
   deleteCommunityChat(communityId, chatId, byUser) {
     const data = this._load();
     const c = data.communities[communityId];
-    if (!c || c.owner !== byUser.toLowerCase()) return false;
+    if (!c || String(c.owner).toLowerCase() !== String(byUser).toLowerCase()) return false;
     if (!c.chats || !c.chats[chatId]) return false;
     delete c.chats[chatId];
     this._save(data);
@@ -394,11 +394,61 @@ const DB = {
     const data = this._load();
     const c = data.communities[communityId];
     if (!c || !c.chats || !c.chats[chatId]) return null;
-    if (!(c.members || []).includes(from.toLowerCase())) return null;
+    if (!(c.members || []).map(m => String(m).toLowerCase()).includes(from.toLowerCase())) return null;
     const msg = { id: this._id('cm'), from: from.toLowerCase(), text: text.trim(), createdAt: Date.now() };
     c.chats[chatId].messages.push(msg);
     this._save(data);
     return msg;
+  },
+
+  inviteToCommunity(communityId, byUser, username) {
+    const data = this._load();
+    const c = data.communities[communityId];
+    if (!c) return { ok: false, error: 'Community not found' };
+    const by = byUser.toLowerCase();
+    if (!(c.members || []).map(m => String(m).toLowerCase()).includes(by)) return { ok: false, error: 'You are not a member' };
+    const u = username.toLowerCase();
+    if (!data.users[u]) return { ok: false, error: 'User not found' };
+    if ((c.members || []).map(m => String(m).toLowerCase()).includes(u)) return { ok: false, error: 'Already a member' };
+    c.members.push(u);
+    if (!c.memberRoles) c.memberRoles = {};
+    c.memberRoles[u] = 'member';
+    this._save(data);
+    this.addNotification(u, by + ' invited you to community "' + c.name + '"', 'system', communityId);
+    return { ok: true };
+  },
+
+  createGroupChat(owner, name, memberUsernames) {
+    const data = this._load();
+    const o = owner.toLowerCase();
+    const members = [o];
+    (memberUsernames || []).forEach(u => {
+      u = String(u).toLowerCase();
+      if (u && !members.includes(u)) members.push(u);
+    });
+    if (members.length < 2) return { ok: false, error: 'Need at least 1 friend to create a group' };
+    const id = this._id('gc');
+    data.chats[id] = { id, type: 'gc', name: name || 'Group Chat', owner: o, members, messages: [], createdAt: Date.now() };
+    this._save(data);
+    members.forEach(m => {
+      if (m !== o) this.addNotification(m, o + ' added you to group "' + (name || 'Group Chat') + '"', 'system', id);
+    });
+    return { ok: true, chat: data.chats[id] };
+  },
+
+  inviteToGroup(chatId, byUser, username) {
+    const data = this._load();
+    const chat = data.chats[chatId];
+    if (!chat || chat.type !== 'gc') return { ok: false, error: 'Not a group' };
+    const by = byUser.toLowerCase();
+    if (!(chat.members || []).includes(by)) return { ok: false, error: 'Not a member' };
+    const u = username.toLowerCase();
+    if ((chat.members || []).includes(u)) return { ok: false, error: 'Already in group' };
+    if (!data.users[u]) return { ok: false, error: 'User not found' };
+    chat.members.push(u);
+    this._save(data);
+    this.addNotification(u, by + ' invited you to group "' + chat.name + '"', 'system', chatId);
+    return { ok: true };
   },
 
   createShare(type, targetId) {
