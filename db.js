@@ -249,6 +249,7 @@ const DB = {
       memberRoles: { [o]: 'owner' },
       categories: [{ id: 'general', name: 'General' }],
       chats: { general: { id: 'general', name: 'General', categoryId: 'general', messages: [], createdAt: Date.now() } },
+      inviteCode: null,
       createdAt: Date.now()
     };
     this._save(data);
@@ -428,7 +429,7 @@ const DB = {
     });
     if (members.length < 2) return { ok: false, error: 'Need at least 1 friend to create a group' };
     const id = this._id('gc');
-    data.chats[id] = { id, type: 'gc', name: name || 'Group Chat', owner: o, members, messages: [], createdAt: Date.now() };
+    data.chats[id] = { id, type: 'gc', name: name || 'Group Chat', owner: o, members, messages: [], inviteCode: null, createdAt: Date.now() };
     this._save(data);
     members.forEach(m => {
       if (m !== o) this.addNotification(m, o + ' added you to group "' + (name || 'Group Chat') + '"', 'system', id);
@@ -451,15 +452,91 @@ const DB = {
     return { ok: true };
   },
 
-  createShare(type, targetId) {
+  createShare(type, targetId, customId) {
     const data = this._load();
-    const shareId = this._id('s');
-    data.shares[shareId] = { type, targetId, createdAt: Date.now() };
+    let shareId;
+    if (customId) {
+      shareId = String(customId).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+      if (!shareId || shareId.length < 3) return { ok: false, error: 'Custom ID too short (min 3)' };
+      if (data.shares[shareId]) return { ok: false, error: 'Custom ID already taken' };
+    } else {
+      shareId = this._id('s');
+    }
+    data.shares[shareId] = { type, targetId, createdAt: Date.now(), custom: !!customId };
     this._save(data);
-    return shareId;
+    return { ok: true, shareId };
   },
 
-  resolveShare(shareId) { return this._load().shares[shareId] || null; },
+  resolveShare(shareId) {
+    if (!shareId) return null;
+    return this._load().shares[String(shareId).toLowerCase()] || null;
+  },
+
+  createCommunityInvite(communityId, byUser, customId) {
+    const data = this._load();
+    const c = data.communities[communityId];
+    if (!c) return { ok: false, error: 'Community not found' };
+    const by = String(byUser).toLowerCase();
+    if (!(c.members || []).map(m => String(m).toLowerCase()).includes(by)) {
+      return { ok: false, error: 'You must be a member' };
+    }
+    if (!customId && c.inviteCode) {
+      return { ok: true, shareId: c.inviteCode, reused: true };
+    }
+    const r = this.createShare('community', communityId, customId || null);
+    if (!r.ok) return r;
+    if (!customId) {
+      c.inviteCode = r.shareId;
+      this._save(data);
+    }
+    return r;
+  },
+
+  createGroupInvite(chatId, byUser, customId) {
+    const data = this._load();
+    const chat = data.chats[chatId];
+    if (!chat || chat.type !== 'gc') return { ok: false, error: 'Group not found' };
+    const by = String(byUser).toLowerCase();
+    if (!(chat.members || []).map(m => String(m).toLowerCase()).includes(by)) {
+      return { ok: false, error: 'You must be a member' };
+    }
+    if (!customId && chat.inviteCode) {
+      return { ok: true, shareId: chat.inviteCode, reused: true };
+    }
+    const r = this.createShare('gc', chatId, customId || null);
+    if (!r.ok) return r;
+    if (!customId) {
+      chat.inviteCode = r.shareId;
+      this._save(data);
+    }
+    return r;
+  },
+
+  joinViaShare(shareId, username) {
+    const s = this.resolveShare(shareId);
+    if (!s) return { ok: false, error: 'Invalid or expired invite link' };
+    const u = String(username).toLowerCase();
+    if (s.type === 'community') {
+      const joined = this.joinCommunity(s.targetId, u);
+      if (!joined) return { ok: false, error: 'Could not join community' };
+      return { ok: true, type: 'community', targetId: s.targetId };
+    }
+    if (s.type === 'gc') {
+      const data = this._load();
+      const chat = data.chats[s.targetId];
+      if (!chat || chat.type !== 'gc') return { ok: false, error: 'Group not found' };
+      if (!(chat.members || []).map(m => String(m).toLowerCase()).includes(u)) {
+        chat.members.push(u);
+        this._save(data);
+        this.addNotification(chat.owner, u + ' joined group "' + chat.name + '" via invite', 'system', s.targetId);
+      }
+      return { ok: true, type: 'gc', targetId: s.targetId };
+    }
+    if (s.type === 'post') {
+      return { ok: true, type: 'post', targetId: s.targetId };
+    }
+    return { ok: false, error: 'Unknown invite type' };
+  },
 
   search(query) {
     const data = this._load();
