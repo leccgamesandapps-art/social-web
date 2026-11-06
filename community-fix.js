@@ -27,8 +27,8 @@
   function renderCommunityFull(id) {
     var c = DB.getCommunity(id);
     if (!c) { navigate('communities'); return; }
-    var isOwner = c.owner === me;
-    var isMember = (c.members || []).indexOf(me) !== -1;
+    var isOwner = String(c.owner || '').toLowerCase() === String(me || '').toLowerCase();
+    var isMember = (c.members || []).map(function(m){ return String(m).toLowerCase(); }).indexOf(String(me || '').toLowerCase()) !== -1;
 
     var header = document.getElementById('community-header');
     if (!header) return;
@@ -57,7 +57,7 @@
 
     var invBtn = document.getElementById('com-invite-btn');
     if (invBtn) invBtn.onclick = function() {
-      var friends = (DB.getFriends(me) || []).filter(function(f){ return (c.members || []).indexOf(f) === -1; });
+      var friends = (DB.getFriends(me) || []).filter(function(f){ return (c.members || []).map(function(x){return String(x).toLowerCase();}).indexOf(String(f).toLowerCase()) === -1; });
       if (!friends.length) {
         alert('No friends to invite. Add friends first, or they are already members.');
         return;
@@ -111,7 +111,7 @@
   function renderCommunitySettingsFull(id, section) {
     var c = DB.getCommunity(id);
     if (!c) { navigate('communities'); return; }
-    if (c.owner !== me) {
+    if (String(c.owner || '').toLowerCase() !== String(me || '').toLowerCase()) {
       alert('Only the owner can open Settings');
       navigate('community=' + encodeURIComponent(id));
       return;
@@ -301,22 +301,15 @@
     var nav = null;
     try { nav = JSON.parse(sessionStorage.getItem('sw_com_nav') || 'null'); } catch(e) {}
     var id = nav && nav.id;
-    if (!id) {
-      var parts = parseParts();
-      id = parts[1];
-    }
-    sessionStorage.removeItem('sw_com_nav');
+    try { sessionStorage.removeItem('sw_com_nav'); } catch(e) {}
     if (id) navigate('community=' + encodeURIComponent(id));
     else navigate('communities');
-    setTimeout(forceCommunityUI, 40);
   };
   var ccBack = document.getElementById('com-chat-back');
   if (ccBack) ccBack.onclick = function() {
-    if (currentComChat) {
-      sessionStorage.setItem('sw_com_nav', JSON.stringify({ id: currentComChat.communityId, sub: '', sub2: '' }));
-      navigate('community=' + encodeURIComponent(currentComChat.communityId));
-    } else navigate('communities');
-    setTimeout(forceCommunityUI, 40);
+    try { sessionStorage.removeItem('sw_com_nav'); } catch(e) {}
+    if (currentComChat) navigate('community=' + encodeURIComponent(currentComChat.communityId));
+    else navigate('communities');
   };
   var sendBtn = document.getElementById('com-chat-send');
   if (sendBtn) sendBtn.onclick = function() {
@@ -339,23 +332,15 @@
     try { nav = JSON.parse(sessionStorage.getItem('sw_com_nav') || 'null'); } catch(e) {}
     var parts = parseParts();
 
-    if (nav && nav.id && (parts[0] !== 'community' || parts[1] !== nav.id || (nav.sub && parts[2] !== nav.sub))) {
-      if (nav.sub === 'settings') {
-        renderCommunitySettingsFull(nav.id, nav.sub2 || '');
-        return;
+    // If user navigated away from community routes, clear sticky nav and do nothing
+    if (parts[0] !== 'community') {
+      if (nav) {
+        try { sessionStorage.removeItem('sw_com_nav'); } catch(e) {}
       }
-      if (nav.sub === 'chat' && nav.sub2) {
-        openCommunityChatFull(nav.id, nav.sub2);
-        return;
-      }
-      if (!nav.sub) {
-        showView('community');
-        renderCommunityFull(nav.id);
-        return;
-      }
+      return;
     }
 
-    if (parts[0] !== 'community' || !parts[1]) return;
+    if (!parts[1]) return;
     var id = parts[1];
     var sub = parts[2] || '';
     var sub2 = parts[3] || '';
@@ -380,10 +365,5 @@
     setTimeout(forceCommunityUI, 100);
   });
 
-  document.addEventListener('click', function() {
-    setTimeout(forceCommunityUI, 50);
-  }, true);
-
   setTimeout(forceCommunityUI, 80);
-  setTimeout(forceCommunityUI, 250);
 })();
