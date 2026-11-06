@@ -182,7 +182,7 @@ const DB = {
   rejectFriendRequest(requestId, username) {
     const data = this._load();
     const req = data.friendRequests.find(r => r.id === requestId && r.to === username && r.status === 'pending');
-    if (!req) return return false;
+    if (!req) return false;
     req.status = 'rejected';
     this._save(data);
     return true;
