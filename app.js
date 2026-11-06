@@ -43,7 +43,7 @@
     const navMap = { 'profile-edit': 'profile', user: 'profile', post: 'home', edit: 'home', 'chat-dm': 'chat', community: 'more', communities: 'more', friends: 'more', notifications: 'more', settings: 'more' };
     const nav = navMap[name] || name;
     document.querySelectorAll('[data-view="' + nav + '"]').forEach(n => n.classList.add('active'));
-    if (name === 'home' || name === 'search' || name === 'create' || name === 'chat' || name === 'profile') {
+    if (['home','search','create','chat','profile'].includes(name)) {
       document.querySelectorAll('[data-view="' + name + '"]').forEach(n => n.classList.add('active'));
     }
   }
@@ -77,7 +77,7 @@
       e.preventDefault();
       const v = item.dataset.view;
       if (v === 'more') { openMoreSheet(); return; }
-      const map = { home: 'home', profile: 'profile', friends: 'friends', notifications: 'notifications', chat: 'chat', search: 'search', create: 'create', settings: 'settings', communities: 'communities' };
+      const map = { home:'home', profile:'profile', friends:'friends', notifications:'notifications', chat:'chat', search:'search', create:'create', settings:'settings', communities:'communities' };
       navigate(map[v] || 'home');
     });
   });
@@ -102,16 +102,12 @@
       btn.onclick = () => {
         const go = btn.dataset.go;
         closeMoreSheet();
-        if (go === 'logout') doLogout();
-        else navigate(go);
+        if (go === 'logout') doLogout(); else navigate(go);
       };
     });
     requestAnimationFrame(() => sheet.classList.add('open'));
   }
-  function closeMoreSheet() {
-    const s = document.getElementById('more-sheet');
-    if (s) s.remove();
-  }
+  function closeMoreSheet() { const s = document.getElementById('more-sheet'); if (s) s.remove(); }
 
   function postCard(p) {
     const isOwner = p.author === me;
@@ -132,7 +128,7 @@
     const feed = document.getElementById('feed');
     const posts = DB.getPosts();
     if (!posts.length) {
-      feed.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p><p class="sub">Be the first to share something!</p><button class="btn primary" style="margin-top:18px" id="id="empty-create">Create Post</button></div>';
+      feed.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p><p class="sub">Be the first to share something!</p><button class="btn primary" style="margin-top:18px" id="empty-create">Create Post</button></div>';
       const btn = document.getElementById('empty-create');
       if (btn) btn.onclick = () => navigate('create');
       return;
@@ -221,14 +217,13 @@
   function renderUser(username) {
     const user = DB.getUser(username);
     if (!user) {
-      document.getElementById('user-header').innerHTML = '<div class="empty"><div class="empty-icon">👤</div><p>User not found</p><button class="btn" style="margin-top:12px" onclick="location.hash=\'#search\'">Search</button></div>';
+      document.getElementById('user-header').innerHTML = '<div class="empty"><div class="empty-icon">👤</div><p>User not found</p></div>';
       document.getElementById('user-posts').innerHTML = '';
       return;
     }
     const isFriend = (user.friends || []).includes(me);
-    const isMeUser = username === me;
     let actions = '';
-    if (!isMeUser) {
+    if (username !== me) {
       if (isFriend) actions = '<button class="btn small" onclick="location.hash=\'#chat=' + encodeURIComponent(username) + '\'">Message</button>';
       else actions = '<button class="btn small primary" id="add-friend-btn">Add Friend</button>';
     }
@@ -368,8 +363,7 @@
     if (!name) return;
     const desc = prompt('Description (optional):') || '';
     const r = DB.createCommunity(me, name, desc);
-    if (r.ok) { alert('Created!'); navigate('community=' + r.community.id); }
-    else alert(r.error);
+    if (r.ok) { alert('Created!'); navigate('community=' + r.community.id); } else alert(r.error);
   };
 
   function renderCommunity(id) {
