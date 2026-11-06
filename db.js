@@ -92,12 +92,28 @@ const DB = {
     return true;
   },
 
-  createPost(author, content) {
+  createPost(author, content, extras) {
     const data = this._load();
-    const post = { id: this._id('p'), author, content: content.trim(), createdAt: Date.now(), updatedAt: Date.now(), comments: [], likes: [] };
+    extras = extras || {};
+    const post = {
+      id: this._id('p'),
+      author,
+      content: (content || '').trim(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      comments: [],
+      likes: [],
+      attachments: extras.attachments || [],
+      featuredLink: extras.featuredLink || null
+    };
     data.posts.unshift(post);
-    this._save(data);
-    return post;
+    try {
+      this._save(data);
+    } catch (e) {
+      data.posts.shift();
+      return { ok: false, error: 'Storage full — try fewer/smaller files' };
+    }
+    return { ok: true, post };
   },
 
   getPosts() { return this._load().posts; },
@@ -484,13 +500,16 @@ const DB = {
       return { ok: false, error: 'You must be a member' };
     }
     if (!customId && c.inviteCode) {
-      return { ok: true, shareId: c.inviteCode, reused: true };
+      const existing = this.resolveShare(c.inviteCode);
+      if (existing) return { ok: true, shareId: c.inviteCode, reused: true };
     }
     const r = this.createShare('community', communityId, customId || null);
     if (!r.ok) return r;
-    if (!customId) {
-      c.inviteCode = r.shareId;
-      this._save(data);
+    const data2 = this._load();
+    const c2 = data2.communities[communityId];
+    if (c2 && !customId) {
+      c2.inviteCode = r.shareId;
+      this._save(data2);
     }
     return r;
   },
@@ -504,13 +523,16 @@ const DB = {
       return { ok: false, error: 'You must be a member' };
     }
     if (!customId && chat.inviteCode) {
-      return { ok: true, shareId: chat.inviteCode, reused: true };
+      const existing = this.resolveShare(chat.inviteCode);
+      if (existing) return { ok: true, shareId: chat.inviteCode, reused: true };
     }
     const r = this.createShare('gc', chatId, customId || null);
     if (!r.ok) return r;
-    if (!customId) {
-      chat.inviteCode = r.shareId;
-      this._save(data);
+    const data2 = this._load();
+    const chat2 = data2.chats[chatId];
+    if (chat2 && !customId) {
+      chat2.inviteCode = r.shareId;
+      this._save(data2);
     }
     return r;
   },
