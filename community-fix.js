@@ -57,21 +57,30 @@
 
     var invBtn = document.getElementById('com-invite-btn');
     if (invBtn) invBtn.onclick = function() {
-      var friends = (DB.getFriends(me) || []).filter(function(f){ return (c.members || []).map(function(x){return String(x).toLowerCase();}).indexOf(String(f).toLowerCase()) === -1; });
-      if (!friends.length) {
-        alert('No friends to invite. Add friends first, or they are already members.');
-        return;
-      }
-      var pick = prompt('Invite friend to community (username):\n' + friends.join(', '));
-      if (!pick) return;
-      if (typeof DB.inviteToCommunity === 'function') {
+      var choice = prompt('Community Invite — choose:\n1 = Invite friend by username\n2 = Copy default invite link\n3 = Create custom invite link\nEnter 1, 2, or 3:');
+      if (!choice) return;
+      var n = String(choice).trim();
+      if (n === '1') {
+        var friends = (DB.getFriends(me) || []).filter(function(f){ return (c.members || []).map(function(x){return String(x).toLowerCase();}).indexOf(String(f).toLowerCase()) === -1; });
+        if (!friends.length) { alert('No friends to invite (or all already members)'); return; }
+        var pick = prompt('Friend username:\n' + friends.join(', '));
+        if (!pick) return;
         var r = DB.inviteToCommunity(id, me, pick.trim());
-        alert(r.ok ? 'Invited!' : (r.error || 'Failed'));
+        alert(r && r.ok ? 'Invited!' : (r && r.error) || 'Failed');
+        renderCommunityFull(id);
+      } else if (n === '2') {
+        var r2 = DB.createCommunityInvite ? DB.createCommunityInvite(id, me, null) : null;
+        if (!r2 || !r2.ok) { alert((r2 && r2.error) || 'Invite API missing — hard refresh'); return; }
+        prompt('Default invite link (copy):', location.origin + '/dashboard#share=' + r2.shareId);
+      } else if (n === '3') {
+        var custom = prompt('Custom invite ID (letters, numbers, - _ ):');
+        if (!custom) return;
+        var r3 = DB.createCommunityInvite ? DB.createCommunityInvite(id, me, custom) : null;
+        if (!r3 || !r3.ok) { alert((r3 && r3.error) || 'Failed'); return; }
+        prompt('Custom invite link (copy):', location.origin + '/dashboard#share=' + r3.shareId);
       } else {
-        DB.joinCommunity(id, pick.trim().toLowerCase());
-        alert('Added');
+        alert('Enter 1, 2, or 3');
       }
-      renderCommunityFull(id);
     };
 
     var body = '';
@@ -332,7 +341,6 @@
     try { nav = JSON.parse(sessionStorage.getItem('sw_com_nav') || 'null'); } catch(e) {}
     var parts = parseParts();
 
-    // If user navigated away from community routes, clear sticky nav and do nothing
     if (parts[0] !== 'community') {
       if (nav) {
         try { sessionStorage.removeItem('sw_com_nav'); } catch(e) {}
