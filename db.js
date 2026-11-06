@@ -468,27 +468,67 @@ const DB = {
     return { ok: true };
   },
 
-  createShare(type, targetId, customId) {
-    const data = this._load();
-    let shareId;
-    if (customId) {
-      shareId = String(customId).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
-      if (!shareId || shareId.length < 3) return { ok: false, error: 'Custom ID too short (min 3)', shareId: null };
-      if (data.shares[shareId]) return { ok: false, error: 'Custom ID already taken', shareId: null };
-    } else {
-      shareId = this._id('s');
+  makeShareCode(type, targetId) {
+    const t = String(type || '').toLowerCase();
+    const id = String(targetId || '').trim();
+    if (!id) return null;
+    if (t === 'post' || t === 'p') return 'p!_' + id;
+    if (t === 'gc' || t === 'g' || t === 'group') return 'g!_' + id;
+    if (t === 'community' || t === 'c') return 'c!_' + id;
+    return null;
+  },
+
+  parseShareCode(shareId) {
+    const raw = String(shareId || '').trim();
+    if (!raw) return null;
+    const m = raw.match(/^([pgc])!_(.+)$/i);
+    if (m) {
+      const map = { p: 'post', g: 'gc', c: 'community' };
+      return { type: map[m[1].toLowerCase()], targetId: m[2] };
     }
-    data.shares[shareId] = { type, targetId, createdAt: Date.now(), custom: !!customId };
-    this._save(data);
-    const result = { ok: true, shareId: shareId };
+    const legacy = this._load().shares[raw.toLowerCase()] || this._load().shares[raw] || null;
+    if (legacy) return { type: legacy.type, targetId: legacy.targetId, legacy: true };
+    return null;
+  },
+
+  createShare(type, targetId, customId) {
+    if (customId) {
+      const data = this._load();
+      let shareId = String(customId).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+      if (!shareId || shareId.length < 3) return { ok: false, error: 'Custom ID too short (min 3)', shareId: null };
+      data.shares[shareId] = { type, targetId, createdAt: Date.now(), custom: true };
+      this._save(data);
+      const result = { ok: true, shareId };
+      result.toString = function() { return this.shareId; };
+      return result;
+    }
+    const code = this.makeShareCode(type, targetId);
+    if (!code) return { ok: false, error: 'Invalid share target', shareId: null };
+    const result = { ok: true, shareId: code };
     result.toString = function() { return this.shareId; };
-    result.valueOf = function() { return this.shareId; };
     return result;
   },
 
   resolveShare(shareId) {
-    if (!shareId) return null;
-    return this._load().shares[String(shareId).toLowerCase()] || null;
+    return this.parseShareCode(shareId);
+  },
+
+  getShareDisplay(shareId) {
+    const s = this.parseShareCode(shareId);
+    if (!s) return null;
+    if (s.type === 'post') {
+      const p = this.getPost(s.targetId);
+      return p ? { type: 'post', targetId: s.targetId, title: (p.content || 'Post').slice(0, 80), author: p.author } : null;
+    }
+    if (s.type === 'gc') {
+      const chat = this.getChat(s.targetId);
+      return chat ? { type: 'gc', targetId: s.targetId, title: chat.name || 'Group Chat' } : null;
+    }
+    if (s.type === 'community') {
+      const c = this.getCommunity(s.targetId);
+      return c ? { type: 'community', targetId: s.targetId, title: c.name || s.targetId } : null;
+    }
+    return null;
   },
 
   createCommunityInvite(communityId, byUser, customId) {
@@ -499,19 +539,13 @@ const DB = {
     if (!(c.members || []).map(m => String(m).toLowerCase()).includes(by)) {
       return { ok: false, error: 'You must be a member' };
     }
-    if (!customId && c.inviteCode) {
-      const existing = this.resolveShare(c.inviteCode);
-      if (existing) return { ok: true, shareId: c.inviteCode, reused: true };
+    if (customId) {
+      return this.createShare('community', communityId, customId);
     }
-    const r = this.createShare('community', communityId, customId || null);
-    if (!r.ok) return r;
-    const data2 = this._load();
-    const c2 = data2.communities[communityId];
-    if (c2 && !customId) {
-      c2.inviteCode = r.shareId;
-      this._save(data2);
-    }
-    return r;
+    const code = this.makeShareCode('community', communityId);
+    c.inviteCode = code;
+    this._save(data);
+    return { ok: true, shareId: code };
   },
 
   createGroupInvite(chatId, byUser, customId) {
@@ -522,29 +556,25 @@ const DB = {
     if (!(chat.members || []).map(m => String(m).toLowerCase()).includes(by)) {
       return { ok: false, error: 'You must be a member' };
     }
-    if (!customId && chat.inviteCode) {
-      const existing = this.resolveShare(chat.inviteCode);
-      if (existing) return { ok: true, shareId: chat.inviteCode, reused: true };
+    if (customId) {
+      return this.createShare('gc', chatId, customId);
     }
-    const r = this.createShare('gc', chatId, customId || null);
-    if (!r.ok) return r;
-    const data2 = this._load();
-    const chat2 = data2.chats[chatId];
-    if (chat2 && !customId) {
-      chat2.inviteCode = r.shareId;
-      this._save(data2);
-    }
-    return r;
+    const code = this.makeShareCode('gc', chatId);
+    chat.inviteCode = code;
+    this._save(data);
+    return { ok: true, shareId: code };
   },
 
   joinViaShare(shareId, username) {
-    const s = this.resolveShare(shareId);
+    const s = this.parseShareCode(shareId);
     if (!s) return { ok: false, error: 'Invalid or expired invite link' };
     const u = String(username).toLowerCase();
     if (s.type === 'community') {
+      const c = this.getCommunity(s.targetId);
+      if (!c) return { ok: false, error: 'Community not found' };
       const joined = this.joinCommunity(s.targetId, u);
       if (!joined) return { ok: false, error: 'Could not join community' };
-      return { ok: true, type: 'community', targetId: s.targetId };
+      return { ok: true, type: 'community', targetId: s.targetId, title: c.name };
     }
     if (s.type === 'gc') {
       const data = this._load();
@@ -555,10 +585,12 @@ const DB = {
         this._save(data);
         this.addNotification(chat.owner, u + ' joined group "' + chat.name + '" via invite', 'system', s.targetId);
       }
-      return { ok: true, type: 'gc', targetId: s.targetId };
+      return { ok: true, type: 'gc', targetId: s.targetId, title: chat.name };
     }
     if (s.type === 'post') {
-      return { ok: true, type: 'post', targetId: s.targetId };
+      const p = this.getPost(s.targetId);
+      if (!p) return { ok: false, error: 'Post not found' };
+      return { ok: true, type: 'post', targetId: s.targetId, title: (p.content || 'Post').slice(0, 80) };
     }
     return { ok: false, error: 'Unknown invite type' };
   },
