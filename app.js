@@ -1,4 +1,4 @@
-// Social Web - Facebook Lite style app
+// Social Web - Facebook Lite style (routes use = not /)
 (function () {
   const session = DB.getSession();
   if (!session) { window.location.replace('/main'); return; }
@@ -7,15 +7,28 @@
   document.getElementById('app').classList.remove('hidden');
 
   const me = session.username;
-  const displayName = session.displayName || me;
+  let displayName = session.displayName || me;
+
+  (function ensureUser() {
+    let u = DB.getUser(me);
+    if (!u) {
+      const data = DB._load();
+      data.users[me] = { username: me, password: '', displayName: displayName, bio: '', friends: [], avatar: null, createdAt: Date.now() };
+      DB._save(data);
+      u = data.users[me];
+    }
+    displayName = u.displayName || me;
+  })();
+
   document.getElementById('mini-name').textContent = displayName;
   const av = document.getElementById('sidebar-avatar');
   if (av) av.textContent = (displayName[0] || 'U').toUpperCase();
 
   function parseRoute() {
-    const hash = (location.hash || '#home').slice(1);
-    const parts = hash.split('/').filter(Boolean);
-    return { parts, raw: hash };
+    const raw = (location.hash || '#home').slice(1);
+    const eq = raw.indexOf('=');
+    if (eq === -1) return { root: raw || 'home', param: '', raw };
+    return { root: raw.slice(0, eq), param: decodeURIComponent(raw.slice(eq + 1)), raw };
   }
 
   function navigate(path) {
@@ -27,41 +40,44 @@
     const el = document.getElementById('view-' + name);
     if (el) el.classList.add('active');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.querySelectorAll('[data-view="' + name + '"]').forEach(n => n.classList.add('active'));
-    if (name === 'profile-edit' || name === 'user') document.querySelectorAll('[data-view="profile"]').forEach(n => n.classList.add('active'));
-    if (name === 'post' || name === 'edit') document.querySelectorAll('[data-view="home"]').forEach(n => n.classList.add('active'));
-    if (name === 'chat-dm') document.querySelectorAll('[data-view="chat"]').forEach(n => n.classList.add('active'));
-    if (name === 'community') document.querySelectorAll('[data-view="communities"]').forEach(n => n.classList.add('active'));
+    const navMap = { 'profile-edit': 'profile', user: 'profile', post: 'home', edit: 'home', 'chat-dm': 'chat', community: 'more', communities: 'more', friends: 'more', notifications: 'more', settings: 'more' };
+    const nav = navMap[name] || name;
+    document.querySelectorAll('[data-view="' + nav + '"]').forEach(n => n.classList.add('active'));
+    if (name === 'home' || name === 'search' || name === 'create' || name === 'chat' || name === 'profile') {
+      document.querySelectorAll('[data-view="' + name + '"]').forEach(n => n.classList.add('active'));
+    }
   }
 
   function route() {
-    const { parts } = parseRoute();
-    const root = parts[0] || 'home';
-    if (root === 'home' || root === 'main') { showView('home'); renderFeed(); return; }
-    if (root === 'profile' && parts[1] === 'edit') { showView('profile-edit'); loadProfileEdit(); return; }
+    const { root, param } = parseRoute();
+    if (root === 'home' || root === 'main' || root === '') { showView('home'); renderFeed(); return; }
+    if (root === 'profile' && param === 'edit') { showView('profile-edit'); loadProfileEdit(); return; }
     if (root === 'profile') { showView('profile'); renderProfile(me); return; }
-    if (root === 'friends') { showView('friends'); renderFriends(parts[1] || 'list'); return; }
-    if (root === 'notifications') { showView('notifications'); renderNotifications(parts[1] || 'all'); return; }
-    if (root === 'user' && parts[1]) { showView('user'); renderUser(parts[1]); return; }
+    if (root === 'friends') { showView('friends'); renderFriends(param || 'list'); return; }
+    if (root === 'notifications') { showView('notifications'); renderNotifications(param || 'all'); return; }
+    if (root === 'user' && param) { showView('user'); renderUser(param); return; }
     if (root === 'search') { showView('search'); return; }
     if (root === 'create') { showView('create'); return; }
     if (root === 'settings') { showView('settings'); return; }
-    if (root === 'post' && parts[1]) { showView('post'); openPost(parts[1]); return; }
-    if (root === 'edit' && parts[1]) { showView('edit'); openEdit(parts[1]); return; }
-    if (root === 'chat' && parts[1]) { showView('chat-dm'); openChat(parts[1]); return; }
+    if (root === 'post' && param) { showView('post'); openPost(param); return; }
+    if (root === 'edit' && param) { showView('edit'); openEdit(param); return; }
+    if (root === 'chat' && param) { showView('chat-dm'); openChat(param); return; }
     if (root === 'chat') { showView('chat'); renderChatList(); return; }
     if (root === 'communities') { showView('communities'); renderCommunities(); return; }
-    if (root === 'community' && parts[1]) { showView('community'); renderCommunity(parts[1]); return; }
-    if (root === 'share' && parts[1]) { resolveShareRoute(parts[1]); return; }
+    if (root === 'community' && param) { showView('community'); renderCommunity(param); return; }
+    if (root === 'share' && param) { resolveShareRoute(param); return; }
+    if (root === 'more') { openMoreSheet(); return; }
     showView('home'); renderFeed();
   }
 
   window.addEventListener('hashchange', route);
+
   document.querySelectorAll('[data-view]').forEach(item => {
     item.addEventListener('click', e => {
       e.preventDefault();
       const v = item.dataset.view;
-      const map = { profile:'profile', friends:'friends', notifications:'notifications', chat:'chat', search:'search', create:'create', settings:'settings', communities:'communities' };
+      if (v === 'more') { openMoreSheet(); return; }
+      const map = { home: 'home', profile: 'profile', friends: 'friends', notifications: 'notifications', chat: 'chat', search: 'search', create: 'create', settings: 'settings', communities: 'communities' };
       navigate(map[v] || 'home');
     });
   });
@@ -71,30 +87,52 @@
   const ml = document.getElementById('logout-btn-mobile');
   if (ml) ml.onclick = doLogout;
 
-  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function letter(name) { return ((name || 'U')[0] || 'U').toUpperCase(); }
-  function time(ts) { return new Date(ts).toLocaleString(); }
+  function time(ts) { try { return new Date(ts).toLocaleString(); } catch { return ''; } }
+
+  function openMoreSheet() {
+    closeMoreSheet();
+    const sheet = document.createElement('div');
+    sheet.id = 'more-sheet';
+    sheet.innerHTML = '<div class="sheet-backdrop"></div><div class="sheet-panel"><div class="sheet-handle"></div><h3>Menu</h3><button class="sheet-item" data-go="friends">👥 Friends</button><button class="sheet-item" data-go="notifications">🔔 Notifications</button><button class="sheet-item" data-go="communities">🌐 Communities</button><button class="sheet-item" data-go="settings">⚙️ Settings</button><button class="sheet-item" data-go="profile">👤 My Profile</button><button class="sheet-item danger" data-go="logout">Logout</button></div>';
+    document.body.appendChild(sheet);
+    sheet.querySelector('.sheet-backdrop').onclick = closeMoreSheet;
+    sheet.querySelectorAll('.sheet-item').forEach(btn => {
+      btn.onclick = () => {
+        const go = btn.dataset.go;
+        closeMoreSheet();
+        if (go === 'logout') doLogout();
+        else navigate(go);
+      };
+    });
+    requestAnimationFrame(() => sheet.classList.add('open'));
+  }
+  function closeMoreSheet() {
+    const s = document.getElementById('more-sheet');
+    if (s) s.remove();
+  }
 
   function postCard(p) {
     const isOwner = p.author === me;
     const liked = (p.likes || []).includes(me);
-    return '<article class="post-card" data-id="' + p.id + '"><div class="post-header"><div class="avatar">' + letter(p.author) + '</div><div class="post-meta"><strong><a href="#user/' + p.author + '" style="color:inherit;text-decoration:none">@' + esc(p.author) + '</a></strong><span class="time">' + time(p.createdAt) + '</span></div></div><p class="post-content">' + esc(p.content) + '</p><div class="post-actions"><button class="btn small like-btn" data-id="' + p.id + '">' + (liked ? '♥' : '♡') + ' ' + (p.likes||[]).length + '</button><button class="btn small view-btn" data-id="' + p.id + '">💬 ' + p.comments.length + '</button><button class="btn small share-btn" data-id="' + p.id + '">↗ Share</button>' + (isOwner ? '<button class="btn small edit-btn" data-id="' + p.id + '">Edit</button><button class="btn small danger del-btn" data-id="' + p.id + '">Delete</button>' : '') + '</div></article>';
+    return '<article class="post-card" data-id="' + p.id + '"><div class="post-header"><div class="avatar">' + letter(p.author) + '</div><div class="post-meta"><strong><a href="#user=' + encodeURIComponent(p.author) + '" style="color:inherit;text-decoration:none">@' + esc(p.author) + '</a></strong><span class="time">' + time(p.createdAt) + '</span></div></div><p class="post-content">' + esc(p.content) + '</p><div class="post-actions"><button class="btn small like-btn" data-id="' + p.id + '">' + (liked ? '♥' : '♡') + ' ' + (p.likes || []).length + '</button><button class="btn small view-btn" data-id="' + p.id + '">💬 ' + (p.comments || []).length + '</button><button class="btn small share-btn" data-id="' + p.id + '">↗ Share</button>' + (isOwner ? '<button class="btn small edit-btn" data-id="' + p.id + '">Edit</button><button class="btn small danger del-btn" data-id="' + p.id + '">Delete</button>' : '') + '</div></article>';
   }
 
   function bindPostActions(root) {
     const r = root || document;
-    r.querySelectorAll('.view-btn').forEach(b => b.onclick = () => navigate('post/' + b.dataset.id));
-    r.querySelectorAll('.edit-btn').forEach(b => b.onclick = () => navigate('edit/' + b.dataset.id));
+    r.querySelectorAll('.view-btn').forEach(b => b.onclick = () => navigate('post=' + b.dataset.id));
+    r.querySelectorAll('.edit-btn').forEach(b => b.onclick = () => navigate('edit=' + b.dataset.id));
     r.querySelectorAll('.del-btn').forEach(b => b.onclick = () => { if (confirm('Delete this post?')) { DB.deletePost(b.dataset.id, me); route(); } });
     r.querySelectorAll('.like-btn').forEach(b => b.onclick = () => { DB.toggleLike(b.dataset.id, me); route(); });
-    r.querySelectorAll('.share-btn').forEach(b => b.onclick = () => { const sid = DB.createShare('post', b.dataset.id); prompt('Share link (copy):', location.origin + '/dashboard#share/' + sid); });
+    r.querySelectorAll('.share-btn').forEach(b => b.onclick = () => { const sid = DB.createShare('post', b.dataset.id); prompt('Share link (copy):', location.origin + '/dashboard#share=' + sid); });
   }
 
   function renderFeed() {
     const feed = document.getElementById('feed');
     const posts = DB.getPosts();
     if (!posts.length) {
-      feed.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p><p class="sub">Be the first to share something!</p><button class="btn primary" style="margin-top:18px" id="empty-create">Create Post</button></div>';
+      feed.innerHTML = '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p><p class="sub">Be the first to share something!</p><button class="btn primary" style="margin-top:18px" id="id="empty-create">Create Post</button></div>';
       const btn = document.getElementById('empty-create');
       if (btn) btn.onclick = () => navigate('create');
       return;
@@ -109,18 +147,18 @@
     document.getElementById('single-post').innerHTML = postCard(post);
     bindPostActions(document.getElementById('single-post'));
     const list = document.getElementById('comments-list');
-    list.innerHTML = post.comments.length ? post.comments.map(c => '<div class="comment"><strong>@' + esc(c.author) + '</strong><span class="time">' + time(c.createdAt) + '</span><p>' + esc(c.text) + '</p></div>').join('') : '<div class="empty" style="padding:24px"><div class="empty-icon">💬</div><p>No comments yet</p></div>';
+    const comments = post.comments || [];
+    list.innerHTML = comments.length ? comments.map(c => '<div class="comment"><strong>@' + esc(c.author) + '</strong><span class="time">' + time(c.createdAt) + '</span><p>' + esc(c.text) + '</p></div>').join('') : '<div class="empty" style="padding:24px"><div class="empty-icon">💬</div><p>No comments yet</p></div>';
   }
 
   document.getElementById('back-btn').onclick = () => navigate('home');
   document.getElementById('comment-submit').onclick = () => {
     const text = document.getElementById('comment-input').value.trim();
-    const { parts } = parseRoute();
-    const id = parts[1];
-    if (!text || !id) return;
-    DB.addComment(id, me, text);
+    const { param } = parseRoute();
+    if (!text || !param) return;
+    DB.addComment(param, me, text);
     document.getElementById('comment-input').value = '';
-    openPost(id);
+    openPost(param);
     updateNotifBadge();
   };
 
@@ -146,18 +184,25 @@
   document.getElementById('edit-cancel').onclick = () => { editingId = null; navigate('home'); };
 
   function renderProfile(username) {
-    const user = DB.getUser(username);
-    if (!user) return;
+    const user = DB.getUser(username) || { username: username, displayName: username, bio: '', friends: [], createdAt: Date.now() };
     const isMe = username === me;
-    document.getElementById('profile-header').innerHTML = '<div class="profile-card"><div class="avatar">' + letter(user.displayName || user.username) + '</div><h2>' + esc(user.displayName || user.username) + '</h2><p class="handle">@' + esc(user.username) + '</p><p class="bio">' + esc(user.bio || 'No bio yet') + '</p><p class="meta">Joined ' + new Date(user.createdAt).toLocaleDateString() + ' • ' + user.friends.length + ' friends</p>' + (isMe ? '<button class="btn primary" style="margin-top:14px" id="go-edit-profile">Edit Profile</button>' : '') + '</div>';
-    if (isMe) { const b = document.getElementById('go-edit-profile'); if (b) b.onclick = () => navigate('profile/edit'); }
+    document.getElementById('profile-header').innerHTML = '<div class="profile-card"><div class="avatar">' + letter(user.displayName || user.username) + '</div><h2>' + esc(user.displayName || user.username) + '</h2><p class="handle">@' + esc(user.username) + '</p><p class="bio">' + esc(user.bio || 'No bio yet') + '</p><p class="meta">Joined ' + new Date(user.createdAt).toLocaleDateString() + ' • ' + (user.friends || []).length + ' friends</p>' + (isMe ? '<div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="btn primary" id="go-edit-profile">Edit Profile</button><button class="btn" id="go-settings">Settings</button><button class="btn" id="go-friends">Friends</button></div>' : '') + '</div>';
+    if (isMe) {
+      const b1 = document.getElementById('go-edit-profile');
+      const b2 = document.getElementById('go-settings');
+      const b3 = document.getElementById('go-friends');
+      if (b1) b1.onclick = () => navigate('profile=edit');
+      if (b2) b2.onclick = () => navigate('settings');
+      if (b3) b3.onclick = () => navigate('friends');
+    }
     const posts = DB.getPosts().filter(p => p.author === username);
-    document.getElementById('profile-posts').innerHTML = posts.length ? posts.map(postCard).join('') : '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p></div>';
-    bindPostActions(document.getElementById('profile-posts'));
+    const pp = document.getElementById('profile-posts');
+    pp.innerHTML = posts.length ? posts.map(postCard).join('') : '<div class="empty"><div class="empty-icon">📝</div><p>No posts yet</p></div>';
+    bindPostActions(pp);
   }
 
   function loadProfileEdit() {
-    const user = DB.getUser(me);
+    const user = DB.getUser(me) || { displayName: me, bio: '' };
     document.getElementById('edit-displayname').value = user.displayName || '';
     document.getElementById('edit-bio').value = user.bio || '';
   }
@@ -175,15 +220,19 @@
 
   function renderUser(username) {
     const user = DB.getUser(username);
-    if (!user) { navigate('search'); return; }
+    if (!user) {
+      document.getElementById('user-header').innerHTML = '<div class="empty"><div class="empty-icon">👤</div><p>User not found</p><button class="btn" style="margin-top:12px" onclick="location.hash=\'#search\'">Search</button></div>';
+      document.getElementById('user-posts').innerHTML = '';
+      return;
+    }
     const isFriend = (user.friends || []).includes(me);
-    const isMe = username === me;
+    const isMeUser = username === me;
     let actions = '';
-    if (!isMe) {
-      if (isFriend) actions = '<button class="btn small" onclick="location.hash=\'#chat/' + username + '\'">Message</button>';
+    if (!isMeUser) {
+      if (isFriend) actions = '<button class="btn small" onclick="location.hash=\'#chat=' + encodeURIComponent(username) + '\'">Message</button>';
       else actions = '<button class="btn small primary" id="add-friend-btn">Add Friend</button>';
     }
-    document.getElementById('user-header').innerHTML = '<div class="profile-card"><div class="avatar">' + letter(user.displayName || user.username) + '</div><h2>' + esc(user.displayName || user.username) + '</h2><p class="handle">@' + esc(user.username) + '</p><p class="bio">' + esc(user.bio || 'No bio yet') + '</p><p class="meta">' + user.friends.length + ' friends</p><div style="margin-top:14px;display:flex;gap:8px;justify-content:center">' + actions + '</div></div>';
+    document.getElementById('user-header').innerHTML = '<div class="profile-card"><div class="avatar">' + letter(user.displayName || user.username) + '</div><h2>' + esc(user.displayName || user.username) + '</h2><p class="handle">@' + esc(user.username) + '</p><p class="bio">' + esc(user.bio || 'No bio yet') + '</p><p class="meta">' + (user.friends || []).length + ' friends</p><div style="margin-top:14px;display:flex;gap:8px;justify-content:center">' + actions + '</div></div>';
     const af = document.getElementById('add-friend-btn');
     if (af) af.onclick = () => { const r = DB.sendFriendRequest(me, username); alert(r.ok ? 'Friend request sent!' : r.error); updateNotifBadge(); };
     const posts = DB.getPosts().filter(p => p.author === username);
@@ -192,11 +241,7 @@
   }
 
   document.querySelectorAll('[data-ftab]').forEach(t => {
-    t.onclick = () => {
-      document.querySelectorAll('[data-ftab]').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      renderFriends(t.dataset.ftab);
-    };
+    t.onclick = () => { document.querySelectorAll('[data-ftab]').forEach(x => x.classList.remove('active')); t.classList.add('active'); renderFriends(t.dataset.ftab); };
   });
 
   function renderFriends(tab) {
@@ -221,16 +266,12 @@
     if (!friends.length) { panel.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><p>No friends yet</p><p class="sub">Search and add people</p></div>'; return; }
     panel.innerHTML = friends.map(f => {
       const u = DB.getUser(f);
-      return '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(f) + '</div><div style="flex:1"><strong>@' + esc(f) + '</strong>' + (u ? '<span style="color:var(--muted);font-size:0.85rem"> · ' + esc(u.displayName) + '</span>' : '') + '</div><button class="btn small" onclick="location.hash=\'#user/' + f + '\'">View</button><button class="btn small" onclick="location.hash=\'#chat/' + f + '\'">Chat</button></div>';
+      return '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(f) + '</div><div style="flex:1"><strong>@' + esc(f) + '</strong>' + (u ? '<span style="color:var(--muted);font-size:0.85rem"> · ' + esc(u.displayName) + '</span>' : '') + '</div><button class="btn small" onclick="location.hash=\'#user=' + encodeURIComponent(f) + '\'">View</button><button class="btn small" onclick="location.hash=\'#chat=' + encodeURIComponent(f) + '\'">Chat</button></div>';
     }).join('');
   }
 
   document.querySelectorAll('[data-ntab]').forEach(t => {
-    t.onclick = () => {
-      document.querySelectorAll('[data-ntab]').forEach(x => x.classList.remove('active'));
-      t.classList.add('active');
-      renderNotifications(t.dataset.ntab);
-    };
+    t.onclick = () => { document.querySelectorAll('[data-ntab]').forEach(x => x.classList.remove('active')); t.classList.add('active'); renderNotifications(t.dataset.ntab); };
   });
 
   function renderNotifications(type) {
@@ -260,12 +301,12 @@
     let html = '';
     if (results.users.length) {
       html += '<h3>Users</h3>';
-      html += results.users.map(u => '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(u.username) + '</div><div style="flex:1"><strong>@' + esc(u.username) + '</strong><span style="color:var(--muted);font-size:0.85rem"> · ' + esc(u.displayName) + '</span></div><button class="btn small" onclick="location.hash=\'#user/' + u.username + '\'">View</button>' + (u.username !== me ? '<button class="btn small" onclick="addFriendQuick(\'' + u.username + '\')">Add</button>' : '') + '</div>').join('');
+      html += results.users.map(u => '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(u.username) + '</div><div style="flex:1"><strong>@' + esc(u.username) + '</strong><span style="color:var(--muted);font-size:0.85rem"> · ' + esc(u.displayName) + '</span></div><button class="btn small" onclick="location.hash=\'#user=' + encodeURIComponent(u.username) + '\'">View</button>' + (u.username !== me ? '<button class="btn small" onclick="addFriendQuick(\'' + u.username + '\')">Add</button>' : '') + '</div>').join('');
     }
     if (results.posts.length) { html += '<h3>Posts</h3>'; html += results.posts.map(postCard).join(''); }
     if (results.communities.length) {
       html += '<h3>Communities</h3>';
-      html += results.communities.map(c => '<div class="list-item"><div style="flex:1"><strong>' + esc(c.name) + '</strong><span class="time"> · ' + c.members.length + ' members</span></div><button class="btn small" onclick="location.hash=\'#community/' + c.id + '\'">Open</button></div>').join('');
+      html += results.communities.map(c => '<div class="list-item"><div style="flex:1"><strong>' + esc(c.name) + '</strong><span class="time"> · ' + c.members.length + ' members</span></div><button class="btn small" onclick="location.hash=\'#community=' + encodeURIComponent(c.id) + '\'">Open</button></div>').join('');
     }
     if (!html) html = '<div class="empty"><div class="empty-icon">🔍</div><p>No results</p></div>';
     box.innerHTML = html;
@@ -285,7 +326,7 @@
     list.innerHTML = chats.map(c => {
       const other = c.members.find(m => m !== me) || c.members[0];
       const last = c.messages.length ? c.messages[c.messages.length - 1] : null;
-      return '<div class="list-item" style="cursor:pointer" onclick="location.hash=\'#chat/' + other + '\'"><div class="avatar" style="width:36px;height:36px">' + letter(other) + '</div><div style="flex:1"><strong>@' + esc(other) + '</strong>' + (last ? '<p style="font-size:0.85rem;color:var(--muted);margin:0">' + esc(last.text.slice(0, 40)) + '</p>' : '') + '</div></div>';
+      return '<div class="list-item" style="cursor:pointer" onclick="location.hash=\'#chat=' + encodeURIComponent(other) + '\'"><div class="avatar" style="width:36px;height:36px">' + letter(other) + '</div><div style="flex:1"><strong>@' + esc(other) + '</strong>' + (last ? '<p style="font-size:0.85rem;color:var(--muted);margin:0">' + esc(last.text.slice(0, 40)) + '</p>' : '') + '</div></div>';
     }).join('');
   }
 
@@ -319,7 +360,7 @@
     const list = DB.listCommunities();
     const el = document.getElementById('communities-list');
     if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🌐</div><p>No communities yet</p></div>'; return; }
-    el.innerHTML = list.map(c => '<div class="list-item"><div style="flex:1"><strong>' + esc(c.name) + '</strong><p style="font-size:0.85rem;color:var(--muted);margin:0">' + esc(c.description || '') + ' · ' + c.members.length + ' members</p></div><button class="btn small" onclick="location.hash=\'#community/' + c.id + '\'">Open</button></div>').join('');
+    el.innerHTML = list.map(c => '<div class="list-item"><div style="flex:1"><strong>' + esc(c.name) + '</strong><p style="font-size:0.85rem;color:var(--muted);margin:0">' + esc(c.description || '') + ' · ' + c.members.length + ' members</p></div><button class="btn small" onclick="location.hash=\'#community=' + encodeURIComponent(c.id) + '\'">Open</button></div>').join('');
   }
 
   document.getElementById('create-community-btn').onclick = () => {
@@ -327,7 +368,7 @@
     if (!name) return;
     const desc = prompt('Description (optional):') || '';
     const r = DB.createCommunity(me, name, desc);
-    if (r.ok) { alert('Created!'); navigate('community/' + r.community.id); }
+    if (r.ok) { alert('Created!'); navigate('community=' + r.community.id); }
     else alert(r.error);
   };
 
@@ -343,9 +384,9 @@
 
   function resolveShareRoute(shareId) {
     const s = DB.resolveShare(shareId);
-    if (!s) { alert('Share link invalid or expired'); navigate('home'); return; }
-    if (s.type === 'post') navigate('post/' + s.targetId);
-    else if (s.type === 'community') navigate('community/' + s.targetId);
+    if (!s) { alert('Share link invalid'); navigate('home'); return; }
+    if (s.type === 'post') navigate('post=' + s.targetId);
+    else if (s.type === 'community') navigate('community=' + s.targetId);
     else navigate('home');
   }
 
@@ -359,8 +400,18 @@
   };
 
   const style = document.createElement('style');
-  style.textContent = '.chat-messages{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;padding:8px 0 16px}.chat-bubble{max-width:80%;padding:10px 14px;border-radius:14px;font-size:0.94rem}.chat-bubble.mine{align-self:flex-end;background:linear-gradient(135deg,#8b7cff,#6c5ce7);color:#fff}.chat-bubble.theirs{align-self:flex-start;background:var(--card);border:1px solid var(--border)}.chat-time{font-size:0.7rem;opacity:0.7;margin-top:4px}.chat-input-row{display:flex;gap:8px;position:sticky;bottom:0;padding-top:8px;background:var(--bg)}.chat-input-row input{flex:1;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);outline:none}.chat-input-row input:focus{border-color:var(--primary)}';
+  style.textContent = '.chat-messages{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;padding:8px 0 16px}.chat-bubble{max-width:80%;padding:10px 14px;border-radius:14px;font-size:0.94rem}.chat-bubble.mine{align-self:flex-end;background:linear-gradient(135deg,#8b7cff,#6c5ce7);color:#fff}.chat-bubble.theirs{align-self:flex-start;background:var(--card);border:1px solid var(--border)}.chat-time{font-size:0.7rem;opacity:0.7;margin-top:4px}.chat-input-row{display:flex;gap:8px;position:sticky;bottom:0;padding-top:8px;background:transparent}.chat-input-row input{flex:1;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);outline:none}.chat-input-row input:focus{border-color:var(--primary)}#more-sheet{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}#more-sheet.open{opacity:1;pointer-events:auto}.sheet-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55)}.sheet-panel{position:relative;width:100%;max-width:480px;background:var(--card);border-radius:20px 20px 0 0;padding:12px 16px 28px;transform:translateY(100%);transition:transform .28s ease;border:1px solid var(--border);border-bottom:none}#more-sheet.open .sheet-panel{transform:translateY(0)}.sheet-handle{width:40px;height:4px;background:var(--border2);border-radius:4px;margin:4px auto 14px}.sheet-panel h3{margin:0 0 12px;font-size:1.1rem}.sheet-item{display:block;width:100%;text-align:left;padding:14px 12px;margin-bottom:6px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:0.95rem;font-weight:600;cursor:pointer}.sheet-item:active{background:var(--primary-soft)}.sheet-item.danger{color:var(--danger);border-color:rgba(255,92,92,.3)}.bg-orbs{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}.bg-orbs span{position:absolute;border-radius:50%;filter:blur(60px);opacity:.35;animation:orbFloat 18s ease-in-out infinite}.bg-orbs span:nth-child(1){width:280px;height:280px;background:#8b7cff;top:-40px;left:-60px}.bg-orbs span:nth-child(2){width:220px;height:220px;background:#6c5ce7;bottom:10%;right:-40px;animation-delay:-6s}.bg-orbs span:nth-child(3){width:180px;height:180px;background:#a78bfa;top:40%;left:40%;animation-delay:-12s}@keyframes orbFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-40px) scale(1.08)}}.app,.main-wrap,.main-content{position:relative;z-index:1}';
   document.head.appendChild(style);
+
+  if (!document.querySelector('.bg-orbs')) {
+    const orbs = document.createElement('div');
+    orbs.className = 'bg-orbs';
+    orbs.innerHTML = '<span></span><span></span><span></span>';
+    document.body.prepend(orbs);
+  }
+
+  const moreBtn = document.getElementById('more-btn-mobile');
+  if (moreBtn) moreBtn.onclick = openMoreSheet;
 
   updateNotifBadge();
   route();
