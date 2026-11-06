@@ -23,6 +23,16 @@
     try {
       var u = new URL(url);
       var host = u.hostname.replace(/^www\./, '');
+      var hash = u.hash || '';
+      var sm = hash.match(/#share=([^&]+)/i);
+      if (sm && typeof DB !== 'undefined' && DB.getShareDisplay) {
+        var code = decodeURIComponent(sm[1]);
+        var info = DB.getShareDisplay(code);
+        if (info) {
+          var label = info.type === 'post' ? 'Post' : (info.type === 'gc' ? 'Group' : 'Community');
+          return { url: url, host: host, title: label + ': ' + info.title, description: 'Open in Social Web', image: null };
+        }
+      }
       return { url: url, host: host, title: host + (u.pathname === '/' ? '' : u.pathname), description: 'Featured link', image: null };
     } catch (e) {
       return { url: url, host: '', title: url, description: '', image: null };
