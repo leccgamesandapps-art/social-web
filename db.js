@@ -6,7 +6,14 @@ const DB = {
 
   _load() {
     try {
-      const raw = localStorage.getItem(this._key);
+      let raw = localStorage.getItem(this._key);
+      if (!raw) {
+        const legacy = localStorage.getItem('sw_db');
+        if (legacy) {
+          localStorage.setItem(this._key, legacy);
+          raw = legacy;
+        }
+      }
       if (!raw) return this._empty();
       const data = JSON.parse(raw);
       data.users = data.users || {};
@@ -16,6 +23,7 @@ const DB = {
       data.chats = data.chats || {};
       data.communities = data.communities || {};
       data.shares = data.shares || {};
+      data.posts.forEach(p => { if (!p.likes) p.likes = []; if (!p.comments) p.comments = []; });
       return data;
     } catch {
       return this._empty();
@@ -174,7 +182,7 @@ const DB = {
   rejectFriendRequest(requestId, username) {
     const data = this._load();
     const req = data.friendRequests.find(r => r.id === requestId && r.to === username && r.status === 'pending');
-    if (!req) return false;
+    if (!req) return return false;
     req.status = 'rejected';
     this._save(data);
     return true;
@@ -279,5 +287,6 @@ const DB = {
   clearAll() {
     localStorage.removeItem(this._key);
     localStorage.removeItem(this._sessionKey);
+    localStorage.removeItem('sw_db');
   }
 };
