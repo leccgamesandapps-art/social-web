@@ -1,4 +1,4 @@
-// Community UI + router guard (survives old app.js overwriting hash)
+// Community UI + router guard
 (function () {
   if (typeof DB === 'undefined' || !DB.getSession || !DB.getSession()) return;
   var me = DB.getSession().username;
@@ -167,7 +167,6 @@
       if (add) add.onclick = function() {
         var name = prompt('Role name:');
         if (!name) return;
-        if (typeof DB.addCommunityRole !== 'function') { alert('Role API missing — hard refresh'); return; }
         var r = DB.addCommunityRole(id, name, ['view', 'chat'], me);
         alert(r && r.ok ? 'Role added' : (r && r.error) || 'Failed');
         renderCommunitySettingsFull(id, 'roles');
@@ -371,6 +370,20 @@
   window.addEventListener('hashchange', function() {
     setTimeout(forceCommunityUI, 20);
     setTimeout(forceCommunityUI, 100);
+  });
+
+  // Join via invite share links
+  window.addEventListener('hashchange', function() {
+    var parts = parseParts();
+    if (parts[0] === 'share' && parts[1] && typeof DB.joinViaShare === 'function') {
+      var me2 = (DB.getSession() || {}).username;
+      if (!me2) return;
+      var r = DB.joinViaShare(parts[1], me2);
+      if (!r.ok) { alert(r.error || 'Invalid invite'); location.hash = '#home'; return; }
+      if (r.type === 'community') { alert('Joined community!'); location.hash = '#community=' + encodeURIComponent(r.targetId); }
+      else if (r.type === 'gc') { alert('Joined group!'); location.hash = '#chat=gc=' + encodeURIComponent(r.targetId); }
+      else if (r.type === 'post') { location.hash = '#post=' + encodeURIComponent(r.targetId); }
+    }
   });
 
   setTimeout(forceCommunityUI, 80);
