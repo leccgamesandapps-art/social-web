@@ -9,6 +9,7 @@
 </head>
 <body>
   <div id="guard" class="loader-screen"><div class="spinner"></div><p>Checking session...</p></div>
+  <div id="sw-modal-root"></div>
   <div id="app" class="app hidden">
     <aside class="sidebar">
       <div class="logo">
@@ -28,7 +29,6 @@
       </nav>
       <div class="user-mini">
         <div class="user-mini-info"><div class="avatar" id="sidebar-avatar">U</div><span id="mini-name">User</span></div>
-        <button id="logout-btn" class="btn small">Logout</button>
       </div>
     </aside>
     <div class="main-wrap">
@@ -39,7 +39,6 @@
         </div>
         <div style="display:flex;gap:8px">
           <button id="more-btn-mobile" class="btn small">Menu</button>
-          <button id="logout-btn-mobile" class="btn small">Logout</button>
         </div>
       </header>
       <main class="main-content">
@@ -51,10 +50,7 @@
             <div id="link-preview-box" class="link-preview hidden"></div>
             <div id="attach-preview" class="attach-preview"></div>
             <div class="create-toolbar">
-              <label class="btn small attach-label">
-                📎 Attach files
-                <input type="file" id="post-files" multiple accept="*/*" hidden />
-              </label>
+              <label class="btn small attach-label">📎 Attach files<input type="file" id="post-files" multiple accept="*/*" hidden /></label>
               <span id="attach-count" class="meta"></span>
               <button id="post-submit" class="btn primary">Post</button>
             </div>
@@ -66,7 +62,35 @@
         <section id="view-user" class="view"><div id="user-header"></div><div id="user-posts" class="feed"></div></section>
         <section id="view-friends" class="view"><div class="view-header"><h2>Friends</h2></div><div class="tabs"><button class="tab active" data-ftab="list">All</button><button class="tab" data-ftab="requests">Requests</button><button class="tab" data-ftab="pending">Pending</button></div><div id="friends-panel" class="list" style="margin-top:14px"></div></section>
         <section id="view-notifications" class="view"><div class="view-header"><h2>Notifications</h2></div><div class="tabs"><button class="tab active" data-ntab="all">All</button><button class="tab" data-ntab="activity">Activity</button><button class="tab" data-ntab="system">System</button></div><div id="notif-list" class="list" style="margin-top:14px"></div></section>
-        <section id="view-settings" class="view"><div class="view-header"><h2>Settings</h2></div><div class="settings-group"><label>New password</label><input id="set-newpass" type="password" /><button id="save-pass" class="btn primary">Update password</button></div><div class="settings-group danger"><button id="clear-data" class="btn danger">Clear all local data</button></div></section>
+        <section id="view-settings" class="view">
+          <div class="view-header"><h2>Settings</h2></div>
+          <div class="settings-group">
+            <label>Theme (this device only)</label>
+            <div class="theme-row" id="theme-row">
+              <button type="button" class="btn small theme-btn" data-theme="dark">Dark</button>
+              <button type="button" class="btn small theme-btn" data-theme="light">Light</button>
+              <button type="button" class="btn small theme-btn" data-theme="purple">Purple</button>
+              <button type="button" class="btn small theme-btn" data-theme="oled">OLED</button>
+            </div>
+            <p class="meta">Theme is saved on this phone only. Other devices keep their own theme.</p>
+          </div>
+          <div class="settings-group">
+            <label>Account</label>
+            <p class="meta" id="settings-account-label">—</p>
+            <button id="btn-switch-account" class="btn">Switch account</button>
+            <button id="logout-btn-settings" class="btn">Logout</button>
+          </div>
+          <div class="settings-group">
+            <label>New password</label>
+            <input id="set-newpass" type="password" placeholder="Min 6 characters" />
+            <button id="save-pass" class="btn primary">Update password</button>
+          </div>
+          <div class="settings-group danger">
+            <label>Danger zone</label>
+            <button id="btn-delete-account" class="btn danger">Delete account</button>
+            <button id="clear-data" class="btn danger">Clear all local data</button>
+          </div>
+        </section>
         <section id="view-post" class="view"><button id="back-btn" class="btn small">← Back</button><div id="single-post" style="margin-top:12px"></div><div class="comments-section"><h3>Comments</h3><div id="comments-list"></div><div class="chat-input-row" style="margin-top:12px"><input id="comment-input" placeholder="Write a comment…" /><button id="comment-submit" class="btn primary">Send</button></div></div></section>
         <section id="view-edit" class="view"><div class="view-header"><h2>Edit Post</h2></div><div class="create-box"><textarea id="edit-content" rows="5"></textarea><div style="display:flex;gap:10px"><button id="edit-save" class="btn primary">Save</button><button id="edit-cancel" class="btn">Cancel</button></div></div></section>
         <section id="view-chat" class="view"><div class="view-header"><h2>Chats</h2></div><div id="chat-list" class="list"></div></section>
@@ -92,6 +116,7 @@
   <script src="/community-fix.js"></script>
   <script src="/gc-fix.js"></script>
   <script src="/attachment-fix.js"></script>
+  <script src="/settings-fix.js"></script>
   <script src="/error-route.js"></script>
 </body>
 </html>
