@@ -26,9 +26,10 @@
 
   function parseRoute() {
     const raw = (location.hash || '#home').slice(1);
-    const eq = raw.indexOf('=');
-    if (eq === -1) return { root: raw || 'home', param: '', raw };
-    return { root: raw.slice(0, eq), param: decodeURIComponent(raw.slice(eq + 1)), raw };
+    const parts = raw.split('=').filter(Boolean).map(p => {
+      try { return decodeURIComponent(p); } catch { return p; }
+    });
+    return { root: parts[0] || 'home', param: parts[1] || '', parts, raw };
   }
 
   function navigate(path) {
@@ -40,7 +41,7 @@
     const el = document.getElementById('view-' + name);
     if (el) el.classList.add('active');
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const navMap = { 'profile-edit': 'profile', user: 'profile', post: 'home', edit: 'home', 'chat-dm': 'chat', community: 'more', communities: 'more', friends: 'more', notifications: 'more', settings: 'more' };
+    const navMap = { 'profile-edit': 'profile', user: 'profile', post: 'home', edit: 'home', 'chat-dm': 'chat', community: 'more', 'community-settings': 'more', 'community-chat': 'more', communities: 'more', friends: 'more', notifications: 'more', settings: 'more', error: 'home' };
     const nav = navMap[name] || name;
     document.querySelectorAll('[data-view="' + nav + '"]').forEach(n => n.classList.add('active'));
     if (['home','search','create','chat','profile'].includes(name)) {
@@ -49,7 +50,7 @@
   }
 
   function route() {
-    const { root, param } = parseRoute();
+    const { root, param, parts } = parseRoute();
     if (root === 'home' || root === 'main' || root === '') { showView('home'); renderFeed(); return; }
     if (root === 'profile' && param === 'edit') { showView('profile-edit'); loadProfileEdit(); return; }
     if (root === 'profile') { showView('profile'); renderProfile(me); return; }
@@ -61,13 +62,34 @@
     if (root === 'settings') { showView('settings'); return; }
     if (root === 'post' && param) { showView('post'); openPost(param); return; }
     if (root === 'edit' && param) { showView('edit'); openEdit(param); return; }
+    if (root === 'chat' && param === 'gc' && parts[2]) { showView('chat-dm'); return; }
     if (root === 'chat' && param) { showView('chat-dm'); openChat(param); return; }
     if (root === 'chat') { showView('chat'); renderChatList(); return; }
     if (root === 'communities') { showView('communities'); renderCommunities(); return; }
-    if (root === 'community' && param) { showView('community'); renderCommunity(param); return; }
+    if (root === 'community' && param) {
+      const sub = (parts && parts[2]) || '';
+      const sub2 = (parts && parts[3]) || '';
+      if (sub === 'settings') {
+        showView('community-settings');
+        return;
+      }
+      if (sub === 'chat' && sub2) {
+        showView('community-chat');
+        return;
+      }
+      showView('community');
+      renderCommunity(param);
+      return;
+    }
     if (root === 'share' && param) { resolveShareRoute(param); return; }
     if (root === 'more') { openMoreSheet(); return; }
-    showView('home'); renderFeed();
+    if (root === 'error') { showView('error'); return; }
+    if (location.hash && location.hash !== '#error') {
+      try { sessionStorage.setItem('sw_unknown_hash', (location.hash || '').slice(1)); } catch(e) {}
+      navigate('error');
+      return;
+    }
+    showView('error');
   }
 
   window.addEventListener('hashchange', route);
@@ -296,29 +318,45 @@
     let html = '';
     if (results.users.length) {
       html += '<h3>Users</h3>';
-      html += results.users.map(u => '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(u.username) + '</div><div style="flex:1"><strong>@' + esc(u.username) + '</strong><span style="color:var(--muted);font-size:0.85rem"> · ' + esc(u.displayName) + '</span></div><button class="btn small" onclick="location.hash=\'#user=' + encodeURIComponent(u.username) + '\'">View</button>' + (u.username !== me ? '<button class="btn small" onclick="addFriendQuick(\'' + u.username + '\')">Add</button>' : '') + '</div>').join('');
+      html += results.users.map(u => '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(u.username) + '</div><div style="flex:1"><strong>@' + esc(u.username) + '</strong><span style="color:var(--muted);font-size:0.85rem"> · ' + esc(u.displayName) + '</span></div><button class="btn small" onclick="location.hash=\'#user=' + encodeURIComponent(u.username) + '\'">View</button>' + (u.username !== me ? '<button class="btn small" onclick="(function(){ var r=DB.sendFriendRequest(\'' + me + '\',\'' + u.username + '\'); alert(r.ok?\'Sent!\':r.error); })()">Add</button>' : '') + '</div>').join('');
     }
-    if (results.posts.length) { html += '<h3>Posts</h3>'; html += results.posts.map(postCard).join(''); }
+    if (results.posts.length) {
+      html += '<h3>Posts</h3>';
+      html += results.posts.map(p => '<div class="list-item"><div style="flex:1"><strong>@' + esc(p.author) + '</strong><p style="margin:0;font-size:0.9rem">' + esc(p.content.slice(0, 80)) + '</p></div><button class="btn small" onclick="location.hash=\'#post=' + encodeURIComponent(p.id) + '\'">Open</button></div>').join('');
+    }
     if (results.communities.length) {
       html += '<h3>Communities</h3>';
       html += results.communities.map(c => '<div class="list-item"><div style="flex:1"><strong>' + esc(c.name) + '</strong><span class="time"> · ' + c.members.length + ' members</span></div><button class="btn small" onclick="location.hash=\'#community=' + encodeURIComponent(c.id) + '\'">Open</button></div>').join('');
     }
-    if (!html) html = '<div class="empty"><div class="empty-icon">🔍</div><p>No results</p></div>';
+    if (!html) html = '<div class="empty"><p>No results</p></div>';
     box.innerHTML = html;
-    bindPostActions(box);
   });
 
-  window.addFriendQuick = function (username) {
-    const r = DB.sendFriendRequest(me, username);
-    alert(r.ok ? 'Request sent!' : r.error);
-    updateNotifBadge();
+  document.getElementById('save-pass').onclick = () => {
+    const p = document.getElementById('set-newpass').value;
+    if (p.length < 6) { alert('Min 6 characters'); return; }
+    if (DB.changePassword(me, p)) { alert('Password updated'); document.getElementById('set-newpass').value = ''; }
+    else alert('Failed');
+  };
+  document.getElementById('clear-data').onclick = () => {
+    if (confirm('This clears ALL local data including accounts. Continue?')) {
+      DB.clearAll();
+      window.location.replace('/main');
+    }
   };
 
   function renderChatList() {
     const chats = DB.listChats(me);
     const list = document.getElementById('chat-list');
-    if (!chats.length) { list.innerHTML = '<div class="empty"><div class="empty-icon">💬</div><p>No chats yet</p><p class="sub">Message a friend from their profile</p></div>'; return; }
+    if (!chats.length) {
+      list.innerHTML = '<div class="empty"><div class="empty-icon">💬</div><p>No chats yet</p><p class="sub">Message a friend from their profile</p></div>';
+      return;
+    }
     list.innerHTML = chats.map(c => {
+      if (c.type === 'gc') {
+        const last = c.messages.length ? c.messages[c.messages.length - 1] : null;
+        return '<div class="list-item" style="cursor:pointer" onclick="location.hash=\'#chat=gc=' + encodeURIComponent(c.id) + '\'"><div class="avatar" style="width:36px;height:36px;background:linear-gradient(135deg,#8b7cff,#a78bfa)">G</div><div style="flex:1"><strong>' + esc(c.name || 'Group') + '</strong><p style="font-size:0.8rem;color:var(--muted);margin:0">' + c.members.length + ' members' + (last ? ' · ' + esc(last.text.slice(0,30)) : '') + '</p></div></div>';
+      }
       const other = c.members.find(m => m !== me) || c.members[0];
       const last = c.messages.length ? c.messages[c.messages.length - 1] : null;
       return '<div class="list-item" style="cursor:pointer" onclick="location.hash=\'#chat=' + encodeURIComponent(other) + '\'"><div class="avatar" style="width:36px;height:36px">' + letter(other) + '</div><div style="flex:1"><strong>@' + esc(other) + '</strong>' + (last ? '<p style="font-size:0.85rem;color:var(--muted);margin:0">' + esc(last.text.slice(0, 40)) + '</p>' : '') + '</div></div>';
@@ -335,8 +373,15 @@
 
   function renderMessages(chat) {
     const box = document.getElementById('chat-messages');
-    if (!chat.messages.length) { box.innerHTML = '<div class="empty" style="padding:24px"><p>No messages yet. Say hi!</p></div>'; return; }
-    box.innerHTML = chat.messages.map(m => '<div class="chat-bubble ' + (m.from === me ? 'mine' : 'theirs') + '"><div class="chat-text">' + esc(m.text) + '</div><div class="chat-time">' + time(m.createdAt) + '</div></div>').join('');
+    if (!chat.messages.length) {
+      box.innerHTML = '<div class="empty" style="padding:24px"><p>No messages yet. Say hi!</p></div>';
+      return;
+    }
+    box.innerHTML = chat.messages.map(m =>
+      '<div class="chat-bubble ' + (m.from === me ? 'mine' : 'theirs') + '">' +
+      '<div class="chat-text">' + esc(m.text) + '</div>' +
+      '<div class="chat-time">' + time(m.createdAt) + '</div></div>'
+    ).join('');
     box.scrollTop = box.scrollHeight;
   }
 
@@ -349,12 +394,17 @@
     renderMessages(DB.getChat(currentChatId));
     updateNotifBadge();
   };
-  document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('chat-send').click(); });
+  document.getElementById('chat-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('chat-send').click();
+  });
 
   function renderCommunities() {
     const list = DB.listCommunities();
     const el = document.getElementById('communities-list');
-    if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🌐</div><p>No communities yet</p></div>'; return; }
+    if (!list.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">🌐</div><p>No communities yet</p></div>';
+      return;
+    }
     el.innerHTML = list.map(c => '<div class="list-item"><div style="flex:1"><strong>' + esc(c.name) + '</strong><p style="font-size:0.85rem;color:var(--muted);margin:0">' + esc(c.description || '') + ' · ' + c.members.length + ' members</p></div><button class="btn small" onclick="location.hash=\'#community=' + encodeURIComponent(c.id) + '\'">Open</button></div>').join('');
   }
 
@@ -369,10 +419,48 @@
   function renderCommunity(id) {
     const c = DB.getCommunity(id);
     if (!c) { navigate('communities'); return; }
-    document.getElementById('community-header').innerHTML = '<div class="profile-card"><h2>' + esc(c.name) + '</h2><p class="bio">' + esc(c.description || '') + '</p><p class="meta">' + c.members.length + ' members · Owner @' + esc(c.owner) + '</p>' + (!c.members.includes(me) ? '<button class="btn primary" style="margin-top:12px" id="join-com">Join</button>' : '<span class="meta" style="display:block;margin-top:8px">You are a member</span>') + '</div>';
+    const isOwner = String(c.owner || '').toLowerCase() === String(me || '').toLowerCase();
+    const isMember = (c.members || []).map(m => String(m).toLowerCase()).includes(String(me || '').toLowerCase());
+    document.getElementById('community-header').innerHTML =
+      '<div class="profile-card"><h2>' + esc(c.name) + '</h2><p class="bio">' + esc(c.description || '') + '</p>' +
+      '<p class="meta">' + c.members.length + ' members · Owner @' + esc(c.owner) + '</p>' +
+      '<div style="margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">' +
+      (!isMember ? '<button class="btn primary" id="join-com">Join</button>' : '<span class="meta">You are a member</span>') +
+      (isMember ? '<button class="btn" id="com-invite-btn">Invite</button>' : '') +
+      (isOwner ? '<button class="btn primary" id="com-open-settings">⚙️ Settings</button>' : '') +
+      '</div></div>';
     const join = document.getElementById('join-com');
     if (join) join.onclick = () => { DB.joinCommunity(id, me); renderCommunity(id); };
-    document.getElementById('community-body').innerHTML = '<p class="meta" style="margin-top:8px">Categories: ' + c.categories.map(cat => esc(cat.name)).join(', ') + '</p>';
+    const setBtn = document.getElementById('com-open-settings');
+    if (setBtn) setBtn.onclick = () => navigate('community=' + encodeURIComponent(id) + '=settings');
+    const invBtn = document.getElementById('com-invite-btn');
+    if (invBtn) invBtn.onclick = () => {
+      const friends = (DB.getFriends(me) || []).filter(f => !(c.members || []).map(x => String(x).toLowerCase()).includes(String(f).toLowerCase()));
+      if (!friends.length) { alert('No friends to invite'); return; }
+      const pick = prompt('Invite friend (username):\n' + friends.join(', '));
+      if (!pick) return;
+      if (typeof DB.inviteToCommunity === 'function') {
+        const r = DB.inviteToCommunity(id, me, pick.trim());
+        alert(r.ok ? 'Invited!' : (r.error || 'Failed'));
+      } else {
+        DB.joinCommunity(id, pick.trim().toLowerCase());
+        alert('Added');
+      }
+      renderCommunity(id);
+    };
+    const cats = c.categories || [];
+    const chats = Object.values(c.chats || {});
+    let body = '';
+    cats.forEach(cat => {
+      body += '<h3 style="margin:16px 0 8px;font-size:0.85rem;color:var(--muted);text-transform:uppercase">' + esc(cat.name) + '</h3>';
+      const catChats = chats.filter(ch => ch.categoryId === cat.id);
+      if (!catChats.length) body += '<p class="meta" style="margin-bottom:8px">No chats — add in Settings</p>';
+      else body += catChats.map(ch =>
+        '<div class="list-item" style="cursor:pointer" onclick="location.hash=\'#community=' + encodeURIComponent(id) + '=chat=' + encodeURIComponent(ch.id) + '\'">' +
+        '<div style="flex:1"><strong>#' + esc(ch.name) + '</strong></div></div>'
+      ).join('');
+    });
+    document.getElementById('community-body').innerHTML = body || '<p class="meta">No categories</p>';
   }
   document.getElementById('com-back').onclick = () => navigate('communities');
 
@@ -382,26 +470,6 @@
     if (s.type === 'post') navigate('post=' + s.targetId);
     else if (s.type === 'community') navigate('community=' + s.targetId);
     else navigate('home');
-  }
-
-  document.getElementById('save-pass').onclick = () => {
-    const pass = document.getElementById('set-newpass').value;
-    if (DB.changePassword(me, pass)) { document.getElementById('set-newpass').value = ''; alert('Password updated'); }
-    else alert('Password too short (min 6)');
-  };
-  document.getElementById('clear-data').onclick = () => {
-    if (confirm('Erase all local data on this device?')) { DB.clearAll(); window.location.replace('/main'); }
-  };
-
-  const style = document.createElement('style');
-  style.textContent = '.chat-messages{display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;padding:8px 0 16px}.chat-bubble{max-width:80%;padding:10px 14px;border-radius:14px;font-size:0.94rem}.chat-bubble.mine{align-self:flex-end;background:linear-gradient(135deg,#8b7cff,#6c5ce7);color:#fff}.chat-bubble.theirs{align-self:flex-start;background:var(--card);border:1px solid var(--border)}.chat-time{font-size:0.7rem;opacity:0.7;margin-top:4px}.chat-input-row{display:flex;gap:8px;position:sticky;bottom:0;padding-top:8px;background:transparent}.chat-input-row input{flex:1;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);outline:none}.chat-input-row input:focus{border-color:var(--primary)}#more-sheet{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}#more-sheet.open{opacity:1;pointer-events:auto}.sheet-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.55)}.sheet-panel{position:relative;width:100%;max-width:480px;background:var(--card);border-radius:20px 20px 0 0;padding:12px 16px 28px;transform:translateY(100%);transition:transform .28s ease;border:1px solid var(--border);border-bottom:none}#more-sheet.open .sheet-panel{transform:translateY(0)}.sheet-handle{width:40px;height:4px;background:var(--border2);border-radius:4px;margin:4px auto 14px}.sheet-panel h3{margin:0 0 12px;font-size:1.1rem}.sheet-item{display:block;width:100%;text-align:left;padding:14px 12px;margin-bottom:6px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:0.95rem;font-weight:600;cursor:pointer}.sheet-item:active{background:var(--primary-soft)}.sheet-item.danger{color:var(--danger);border-color:rgba(255,92,92,.3)}.bg-orbs{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}.bg-orbs span{position:absolute;border-radius:50%;filter:blur(60px);opacity:.35;animation:orbFloat 18s ease-in-out infinite}.bg-orbs span:nth-child(1){width:280px;height:280px;background:#8b7cff;top:-40px;left:-60px}.bg-orbs span:nth-child(2){width:220px;height:220px;background:#6c5ce7;bottom:10%;right:-40px;animation-delay:-6s}.bg-orbs span:nth-child(3){width:180px;height:180px;background:#a78bfa;top:40%;left:40%;animation-delay:-12s}@keyframes orbFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-40px) scale(1.08)}}.app,.main-wrap,.main-content{position:relative;z-index:1}';
-  document.head.appendChild(style);
-
-  if (!document.querySelector('.bg-orbs')) {
-    const orbs = document.createElement('div');
-    orbs.className = 'bg-orbs';
-    orbs.innerHTML = '<span></span><span></span><span></span>';
-    document.body.prepend(orbs);
   }
 
   const moreBtn = document.getElementById('more-btn-mobile');
