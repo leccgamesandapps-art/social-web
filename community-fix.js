@@ -1,4 +1,4 @@
-// Community full UI: Settings, Invite, roles, categories, chats
+// Community UI + router guard (survives old app.js overwriting hash)
 (function () {
   if (typeof DB === 'undefined' || !DB.getSession || !DB.getSession()) return;
   var me = DB.getSession().username;
@@ -16,6 +16,12 @@
     document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
     var el = document.getElementById('view-' + name);
     if (el) el.classList.add('active');
+  }
+  function parseParts() {
+    var raw = (location.hash || '').slice(1);
+    return raw.split('=').filter(Boolean).map(function(p) {
+      try { return decodeURIComponent(p); } catch(e) { return p; }
+    });
   }
 
   function renderCommunityFull(id) {
@@ -42,7 +48,12 @@
     if (join) join.onclick = function(){ DB.joinCommunity(id, me); renderCommunityFull(id); };
 
     var setBtn = document.getElementById('com-open-settings');
-    if (setBtn) setBtn.onclick = function(){ navigate('community=' + encodeURIComponent(id) + '=settings'); };
+    if (setBtn) setBtn.onclick = function(){
+      sessionStorage.setItem('sw_com_nav', JSON.stringify({ id: id, sub: 'settings', sub2: '' }));
+      navigate('community=' + encodeURIComponent(id) + '=settings');
+      setTimeout(function(){ forceCommunityUI(); }, 30);
+      setTimeout(function(){ forceCommunityUI(); }, 120);
+    };
 
     var invBtn = document.getElementById('com-invite-btn');
     if (invBtn) invBtn.onclick = function() {
@@ -58,7 +69,7 @@
         alert(r.ok ? 'Invited!' : (r.error || 'Failed'));
       } else {
         DB.joinCommunity(id, pick.trim().toLowerCase());
-        alert('Added (local)');
+        alert('Added');
       }
       renderCommunityFull(id);
     };
@@ -76,21 +87,37 @@
           body += '<p class="meta" style="margin-bottom:8px">No chats — add in Settings</p>';
         } else {
           body += catChats.map(function(ch) {
-            return '<div class="list-item" style="cursor:pointer" onclick="location.hash=\'#community=' +
-              encodeURIComponent(id) + '=chat=' + encodeURIComponent(ch.id) + '\'">' +
+            return '<div class="list-item" style="cursor:pointer" data-com-chat="' + encodeURIComponent(ch.id) + '">' +
               '<div style="flex:1"><strong>#' + esc(ch.name) + '</strong></div></div>';
           }).join('');
         }
       });
     }
     var bodyEl = document.getElementById('community-body');
-    if (bodyEl) bodyEl.innerHTML = body;
+    if (bodyEl) {
+      bodyEl.innerHTML = body;
+      bodyEl.querySelectorAll('[data-com-chat]').forEach(function(el) {
+        el.onclick = function() {
+          var chatId = decodeURIComponent(el.getAttribute('data-com-chat'));
+          sessionStorage.setItem('sw_com_nav', JSON.stringify({ id: id, sub: 'chat', sub2: chatId }));
+          navigate('community=' + encodeURIComponent(id) + '=chat=' + encodeURIComponent(chatId));
+          setTimeout(forceCommunityUI, 30);
+          setTimeout(forceCommunityUI, 120);
+        };
+      });
+    }
   }
 
   function renderCommunitySettingsFull(id, section) {
     var c = DB.getCommunity(id);
-    if (!c || c.owner !== me) { navigate('community=' + encodeURIComponent(id)); return; }
+    if (!c) { navigate('communities'); return; }
+    if (c.owner !== me) {
+      alert('Only the owner can open Settings');
+      navigate('community=' + encodeURIComponent(id));
+      return;
+    }
     section = section || '';
+    showView('community-settings');
     var box = document.getElementById('com-settings-body');
     if (!box) return;
 
@@ -105,12 +132,17 @@
 
     box.querySelectorAll('[data-cs]').forEach(function(t) {
       t.onclick = function() {
-        var s = t.getAttribute('data-cs');
+        var s = t.getAttribute('data-cs') || '';
+        sessionStorage.setItem('sw_com_nav', JSON.stringify({ id: id, sub: 'settings', sub2: s }));
         navigate('community=' + encodeURIComponent(id) + '=settings' + (s ? '=' + s : ''));
+        setTimeout(forceCommunityUI, 30);
+        setTimeout(forceCommunityUI, 120);
       };
     });
 
     var panel = document.getElementById('cs-panel');
+    if (!panel) return;
+
     if (section === 'roles') {
       var roles = Object.values(c.roles || {});
       panel.innerHTML = roles.map(function(r) {
@@ -126,8 +158,9 @@
       if (add) add.onclick = function() {
         var name = prompt('Role name:');
         if (!name) return;
+        if (typeof DB.addCommunityRole !== 'function') { alert('Role API missing — hard refresh'); return; }
         var r = DB.addCommunityRole(id, name, ['view', 'chat'], me);
-        alert(r.ok ? 'Role added' : r.error);
+        alert(r && r.ok ? 'Role added' : (r && r.error) || 'Failed');
         renderCommunitySettingsFull(id, 'roles');
       };
       panel.querySelectorAll('[data-er]').forEach(function(b) {
@@ -160,7 +193,7 @@
         var name = prompt('Category name:');
         if (!name) return;
         var r = DB.addCommunityCategory(id, name, me);
-        alert(r.ok ? 'Added' : r.error);
+        alert(r && r.ok ? 'Added' : (r && r.error) || 'Failed');
         renderCommunitySettingsFull(id, 'categories');
       };
       panel.querySelectorAll('[data-ec]').forEach(function(b) {
@@ -194,7 +227,7 @@
         if (!name) return;
         var cat = prompt('Category id (e.g. general):', 'general') || 'general';
         var r = DB.addCommunityChat(id, name, cat, me);
-        alert(r.ok ? 'Chat added' : r.error);
+        alert(r && r.ok ? 'Chat added' : (r && r.error) || 'Failed');
         renderCommunitySettingsFull(id, 'chats');
       };
       panel.querySelectorAll('[data-ech]').forEach(function(b) {
@@ -223,10 +256,12 @@
         '<p class="meta">Members: ' + c.members.length + '</p>';
       var save = document.getElementById('cs-save');
       if (save) save.onclick = function() {
-        DB.updateCommunity(id, {
-          name: document.getElementById('cs-name').value.trim(),
-          description: document.getElementById('cs-desc').value.trim()
-        }, me);
+        if (typeof DB.updateCommunity === 'function') {
+          DB.updateCommunity(id, {
+            name: document.getElementById('cs-name').value.trim(),
+            description: document.getElementById('cs-desc').value.trim()
+          }, me);
+        }
         alert('Saved');
         renderCommunitySettingsFull(id, '');
       };
@@ -241,6 +276,7 @@
       return;
     }
     currentComChat = { communityId: communityId, chatId: chatId };
+    showView('community-chat');
     var title = document.getElementById('com-chat-title');
     if (title) title.textContent = '#' + c.chats[chatId].name + ' · ' + c.name;
     renderComMessages(c.chats[chatId]);
@@ -262,15 +298,25 @@
 
   var csBack = document.getElementById('com-settings-back');
   if (csBack) csBack.onclick = function() {
-    var raw = (location.hash || '').slice(1);
-    var parts = raw.split('=');
-    if (parts[1]) navigate('community=' + parts[1]);
+    var nav = null;
+    try { nav = JSON.parse(sessionStorage.getItem('sw_com_nav') || 'null'); } catch(e) {}
+    var id = nav && nav.id;
+    if (!id) {
+      var parts = parseParts();
+      id = parts[1];
+    }
+    sessionStorage.removeItem('sw_com_nav');
+    if (id) navigate('community=' + encodeURIComponent(id));
     else navigate('communities');
+    setTimeout(forceCommunityUI, 40);
   };
   var ccBack = document.getElementById('com-chat-back');
   if (ccBack) ccBack.onclick = function() {
-    if (currentComChat) navigate('community=' + encodeURIComponent(currentComChat.communityId));
-    else navigate('communities');
+    if (currentComChat) {
+      sessionStorage.setItem('sw_com_nav', JSON.stringify({ id: currentComChat.communityId, sub: '', sub2: '' }));
+      navigate('community=' + encodeURIComponent(currentComChat.communityId));
+    } else navigate('communities');
+    setTimeout(forceCommunityUI, 40);
   };
   var sendBtn = document.getElementById('com-chat-send');
   if (sendBtn) sendBtn.onclick = function() {
@@ -288,33 +334,56 @@
     if (e.key === 'Enter' && sendBtn) sendBtn.click();
   });
 
-  function handleCommunityRoute() {
-    var raw = (location.hash || '').slice(1);
-    var parts = raw.split('=').filter(Boolean).map(function(p) {
-      try { return decodeURIComponent(p); } catch(e) { return p; }
-    });
-    if (parts[0] !== 'community' || !parts[1]) return;
+  function forceCommunityUI() {
+    var nav = null;
+    try { nav = JSON.parse(sessionStorage.getItem('sw_com_nav') || 'null'); } catch(e) {}
+    var parts = parseParts();
 
+    if (nav && nav.id && (parts[0] !== 'community' || parts[1] !== nav.id || (nav.sub && parts[2] !== nav.sub))) {
+      if (nav.sub === 'settings') {
+        renderCommunitySettingsFull(nav.id, nav.sub2 || '');
+        return;
+      }
+      if (nav.sub === 'chat' && nav.sub2) {
+        openCommunityChatFull(nav.id, nav.sub2);
+        return;
+      }
+      if (!nav.sub) {
+        showView('community');
+        renderCommunityFull(nav.id);
+        return;
+      }
+    }
+
+    if (parts[0] !== 'community' || !parts[1]) return;
     var id = parts[1];
     var sub = parts[2] || '';
     var sub2 = parts[3] || '';
 
     if (sub === 'settings') {
-      showView('community-settings');
+      sessionStorage.setItem('sw_com_nav', JSON.stringify({ id: id, sub: 'settings', sub2: sub2 }));
       renderCommunitySettingsFull(id, sub2);
       return;
     }
     if (sub === 'chat' && sub2) {
-      showView('community-chat');
+      sessionStorage.setItem('sw_com_nav', JSON.stringify({ id: id, sub: 'chat', sub2: sub2 }));
       openCommunityChatFull(id, sub2);
       return;
     }
+    sessionStorage.setItem('sw_com_nav', JSON.stringify({ id: id, sub: '', sub2: '' }));
     showView('community');
     renderCommunityFull(id);
   }
 
   window.addEventListener('hashchange', function() {
-    setTimeout(handleCommunityRoute, 10);
+    setTimeout(forceCommunityUI, 20);
+    setTimeout(forceCommunityUI, 100);
   });
-  setTimeout(handleCommunityRoute, 80);
+
+  document.addEventListener('click', function() {
+    setTimeout(forceCommunityUI, 50);
+  }, true);
+
+  setTimeout(forceCommunityUI, 80);
+  setTimeout(forceCommunityUI, 250);
 })();
