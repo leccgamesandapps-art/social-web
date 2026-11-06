@@ -71,13 +71,14 @@
       } else if (n === '2') {
         var r2 = DB.createCommunityInvite ? DB.createCommunityInvite(id, me, null) : null;
         if (!r2 || !r2.ok) { alert((r2 && r2.error) || 'Invite API missing — hard refresh'); return; }
-        prompt('Default invite link (copy):', location.origin + '/dashboard#share=' + r2.shareId);
+        var disp = DB.getShareDisplay ? DB.getShareDisplay(r2.shareId) : null;
+        prompt('Community invite' + (disp ? ' — ' + disp.title : '') + ' (copy):', location.origin + '/dashboard#share=' + encodeURIComponent(r2.shareId));
       } else if (n === '3') {
         var custom = prompt('Custom invite ID (letters, numbers, - _ ):');
         if (!custom) return;
         var r3 = DB.createCommunityInvite ? DB.createCommunityInvite(id, me, custom) : null;
         if (!r3 || !r3.ok) { alert((r3 && r3.error) || 'Failed'); return; }
-        prompt('Custom invite link (copy):', location.origin + '/dashboard#share=' + r3.shareId);
+        prompt('Custom community invite (copy):', location.origin + '/dashboard#share=' + encodeURIComponent(r3.shareId));
       } else {
         alert('Enter 1, 2, or 3');
       }
@@ -372,17 +373,25 @@
     setTimeout(forceCommunityUI, 100);
   });
 
-  // Join via invite share links
+  // Join via invite share links: #share=c!_id | g!_id | p!_id
   window.addEventListener('hashchange', function() {
     var parts = parseParts();
     if (parts[0] === 'share' && parts[1] && typeof DB.joinViaShare === 'function') {
       var me2 = (DB.getSession() || {}).username;
       if (!me2) return;
-      var r = DB.joinViaShare(parts[1], me2);
+      var code = parts.slice(1).join('=');
+      try { code = decodeURIComponent(code); } catch(e) {}
+      var r = DB.joinViaShare(code, me2);
       if (!r.ok) { alert(r.error || 'Invalid invite'); location.hash = '#home'; return; }
-      if (r.type === 'community') { alert('Joined community!'); location.hash = '#community=' + encodeURIComponent(r.targetId); }
-      else if (r.type === 'gc') { alert('Joined group!'); location.hash = '#chat=gc=' + encodeURIComponent(r.targetId); }
-      else if (r.type === 'post') { location.hash = '#post=' + encodeURIComponent(r.targetId); }
+      if (r.type === 'community') {
+        alert('Community: ' + (r.title || r.targetId));
+        location.hash = '#community=' + encodeURIComponent(r.targetId);
+      } else if (r.type === 'gc') {
+        alert('Group: ' + (r.title || r.targetId));
+        location.hash = '#chat=gc=' + encodeURIComponent(r.targetId);
+      } else if (r.type === 'post') {
+        location.hash = '#post=' + encodeURIComponent(r.targetId);
+      }
     }
   });
 
