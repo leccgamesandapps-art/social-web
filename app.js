@@ -69,14 +69,8 @@
     if (root === 'community' && param) {
       const sub = (parts && parts[2]) || '';
       const sub2 = (parts && parts[3]) || '';
-      if (sub === 'settings') {
-        showView('community-settings');
-        return;
-      }
-      if (sub === 'chat' && sub2) {
-        showView('community-chat');
-        return;
-      }
+      if (sub === 'settings') { showView('community-settings'); return; }
+      if (sub === 'chat' && sub2) { showView('community-chat'); return; }
       showView('community');
       renderCommunity(param);
       return;
@@ -117,19 +111,46 @@
     closeMoreSheet();
     const sheet = document.createElement('div');
     sheet.id = 'more-sheet';
-    sheet.innerHTML = '<div class="sheet-backdrop"></div><div class="sheet-panel"><div class="sheet-handle"></div><h3>Menu</h3><button class="sheet-item" data-go="friends">👥 Friends</button><button class="sheet-item" data-go="notifications">🔔 Notifications</button><button class="sheet-item" data-go="communities">🌐 Communities</button><button class="sheet-item" data-go="settings">⚙️ Settings</button><button class="sheet-item" data-go="profile">👤 My Profile</button><button class="sheet-item danger" data-go="logout">Logout</button></div>';
+    sheet.innerHTML =
+      '<div class="sheet-backdrop"></div>' +
+      '<div class="sheet-panel">' +
+      '<div class="sheet-handle"></div>' +
+      '<h3>Menu</h3>' +
+      '<button type="button" class="sheet-item" data-go="home">🏠 Home</button>' +
+      '<button type="button" class="sheet-item" data-go="profile">👤 My Profile</button>' +
+      '<button type="button" class="sheet-item" data-go="friends">👥 Friends</button>' +
+      '<button type="button" class="sheet-item" data-go="notifications">🔔 Notifications</button>' +
+      '<button type="button" class="sheet-item" data-go="communities">🌐 Communities</button>' +
+      '<button type="button" class="sheet-item" data-go="chat">💬 Chat</button>' +
+      '<button type="button" class="sheet-item" data-go="search">🔍 Search</button>' +
+      '<button type="button" class="sheet-item" data-go="create">✏️ Create Post</button>' +
+      '<button type="button" class="sheet-item" data-go="settings">⚙️ Settings</button>' +
+      '<button type="button" class="sheet-item danger" data-go="logout">Logout</button>' +
+      '</div>';
     document.body.appendChild(sheet);
-    sheet.querySelector('.sheet-backdrop').onclick = closeMoreSheet;
-    sheet.querySelectorAll('.sheet-item').forEach(btn => {
-      btn.onclick = () => {
-        const go = btn.dataset.go;
+    const backdrop = sheet.querySelector('.sheet-backdrop');
+    if (backdrop) backdrop.addEventListener('click', function(e){ e.preventDefault(); closeMoreSheet(); });
+    sheet.querySelectorAll('.sheet-item').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const go = btn.getAttribute('data-go');
         closeMoreSheet();
-        if (go === 'logout') doLogout(); else navigate(go);
-      };
+        if (go === 'logout') { doLogout(); return; }
+        navigate(go);
+      });
     });
-    requestAnimationFrame(() => sheet.classList.add('open'));
+    void sheet.offsetHeight;
+    requestAnimationFrame(function() {
+      sheet.classList.add('open');
+    });
   }
-  function closeMoreSheet() { const s = document.getElementById('more-sheet'); if (s) s.remove(); }
+  function closeMoreSheet() {
+    const s = document.getElementById('more-sheet');
+    if (!s) return;
+    s.classList.remove('open');
+    setTimeout(function(){ if (s.parentNode) s.parentNode.removeChild(s); }, 280);
+  }
 
   function postCard(p) {
     const isOwner = p.author === me;
@@ -318,7 +339,7 @@
     let html = '';
     if (results.users.length) {
       html += '<h3>Users</h3>';
-      html += results.users.map(u => '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(u.username) + '</div><div style="flex:1"><strong>@' + esc(u.username) + '</strong><span style="color:var(--muted);font-size:0.85rem"> · ' + esc(u.displayName) + '</span></div><button class="btn small" onclick="location.hash=\'#user=' + encodeURIComponent(u.username) + '\'">View</button>' + (u.username !== me ? '<button class="btn small" onclick="(function(){ var r=DB.sendFriendRequest(\'' + me + '\',\'' + u.username + '\'); alert(r.ok?\'Sent!\':r.error); })()">Add</button>' : '') + '</div>').join('');
+      html += results.users.map(u => '<div class="list-item"><div class="avatar" style="width:36px;height:36px">' + letter(u.username) + '</div><div style="flex:1"><strong>@' + esc(u.username) + '</strong><span style="color:var(--muted);font-size:0.85rem"> · ' + esc(u.displayName) + '</span></div><button class="btn small" onclick="location.hash=\'#user=' + encodeURIComponent(u.username) + '\'">View</button></div>').join('');
     }
     if (results.posts.length) {
       html += '<h3>Posts</h3>';
@@ -473,7 +494,13 @@
   }
 
   const moreBtn = document.getElementById('more-btn-mobile');
-  if (moreBtn) moreBtn.onclick = openMoreSheet;
+  if (moreBtn) {
+    moreBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      openMoreSheet();
+    });
+  }
 
   updateNotifBadge();
   route();
