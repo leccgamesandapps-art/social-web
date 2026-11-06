@@ -457,14 +457,17 @@ const DB = {
     let shareId;
     if (customId) {
       shareId = String(customId).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
-      if (!shareId || shareId.length < 3) return { ok: false, error: 'Custom ID too short (min 3)' };
-      if (data.shares[shareId]) return { ok: false, error: 'Custom ID already taken' };
+      if (!shareId || shareId.length < 3) return { ok: false, error: 'Custom ID too short (min 3)', shareId: null };
+      if (data.shares[shareId]) return { ok: false, error: 'Custom ID already taken', shareId: null };
     } else {
       shareId = this._id('s');
     }
     data.shares[shareId] = { type, targetId, createdAt: Date.now(), custom: !!customId };
     this._save(data);
-    return { ok: true, shareId };
+    const result = { ok: true, shareId: shareId };
+    result.toString = function() { return this.shareId; };
+    result.valueOf = function() { return this.shareId; };
+    return result;
   },
 
   resolveShare(shareId) {
