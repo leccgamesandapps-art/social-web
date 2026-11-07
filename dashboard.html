@@ -20,10 +20,9 @@
         <a href="#home" data-view="home" class="nav-item active"><span class="icon">🏠</span> Home</a>
         <a href="#search" data-view="search" class="nav-item"><span class="icon">🔍</span> Search</a>
         <a href="#create" data-view="create" class="nav-item"><span class="icon">✏️</span> Create</a>
-        <a href="#chat" data-view="chat" class="nav-item"><span class="icon">💬</span> Chat</a>
+        <a href="#spaces" data-view="spaces" class="nav-item"><span class="icon">◈</span> Spaces</a>
         <a href="#friends" data-view="friends" class="nav-item"><span class="icon">👥</span> Friends</a>
-        <a href="#notifications" data-view="notifications" class="nav-item"><span class="icon">🔔</span> Notifications <span id="notif-badge" class="badge hidden">0</span></a>
-        <a href="#communities" data-view="communities" class="nav-item"><span class="icon">🌐</span> Communities</a>
+        <a href="#notifications" data-view="notifications" class="nav-item"><span class="icon">🔔</span> Alerts <span id="notif-badge" class="badge hidden">0</span></a>
         <a href="#profile" data-view="profile" class="nav-item"><span class="icon">👤</span> Profile</a>
         <a href="#settings" data-view="settings" class="nav-item"><span class="icon">⚙️</span> Settings</a>
       </nav>
@@ -47,15 +46,34 @@
         <section id="view-profile-edit" class="view"><div class="view-header"><h2>Edit Profile</h2></div><div class="settings-group"><label>Display name</label><input id="edit-displayname" type="text" /><label>Bio</label><textarea id="edit-bio" rows="3"></textarea><button id="save-profile-edit" class="btn primary">Save</button></div></section>
         <section id="view-user" class="view"><div id="user-header"></div><div id="user-posts" class="feed"></div></section>
         <section id="view-friends" class="view"><div class="view-header"><h2>Friends</h2></div><div class="tabs"><button class="tab active" data-ftab="list">All</button><button class="tab" data-ftab="requests">Requests</button><button class="tab" data-ftab="pending">Pending</button></div><div id="friends-panel" class="list" style="margin-top:14px"></div></section>
-        <section id="view-notifications" class="view"><div class="view-header"><h2>Notifications</h2></div><div class="tabs"><button class="tab active" data-ntab="all">All</button><button class="tab" data-ntab="activity">Activity</button><button class="tab" data-ntab="system">System</button></div><div id="notif-list" class="list" style="margin-top:14px"></div></section>
+        <section id="view-notifications" class="view"><div class="view-header"><h2>Alerts</h2></div><div class="tabs"><button class="tab active" data-ntab="all">All</button><button class="tab" data-ntab="activity">Activity</button><button class="tab" data-ntab="system">System</button></div><div id="notif-list" class="list" style="margin-top:14px"></div></section>
         <section id="view-settings" class="view"><div class="view-header"><h2>Settings</h2></div><div class="settings-group"><label>Theme (this device only)</label><div class="theme-row"><button type="button" class="btn small theme-btn" data-theme="dark">Dark</button><button type="button" class="btn small theme-btn" data-theme="light">Light</button><button type="button" class="btn small theme-btn" data-theme="purple">Purple</button><button type="button" class="btn small theme-btn" data-theme="oled">OLED</button></div><p class="meta">Theme saved on this phone only.</p></div><div class="settings-group"><label>Account</label><p class="meta" id="settings-account-label">—</p><button id="btn-switch-account" class="btn">Switch account</button><button id="logout-btn-settings" class="btn">Logout</button></div><div class="settings-group"><label>New password</label><input id="set-newpass" type="password" placeholder="Min 6 characters" /><button id="save-pass" class="btn primary">Update password</button></div><div class="settings-group danger"><label>Danger zone</label><button id="btn-delete-account" class="btn danger">Delete account</button><button id="clear-data" class="btn danger">Clear all local data</button></div></section>
         <section id="view-post" class="view"><button id="back-btn" class="btn small">← Back</button><div id="single-post" style="margin-top:12px"></div><div class="comments-section"><h3>Comments</h3><div id="comments-list"></div><div class="chat-input-row" style="margin-top:12px"><input id="comment-input" placeholder="Write a comment…" /><button id="comment-submit" class="btn primary">Send</button></div></div></section>
         <section id="view-edit" class="view"><div class="view-header"><h2>Edit Post</h2></div><div class="create-box"><textarea id="edit-content" rows="5"></textarea><div style="display:flex;gap:10px"><button id="edit-save" class="btn primary">Save</button><button id="edit-cancel" class="btn">Cancel</button></div></div></section>
+        <section id="view-spaces" class="view spaces-view">
+          <div class="spaces-layout">
+            <div class="spaces-rail" id="spaces-rail">
+              <button type="button" class="space-pill dm-pill active" id="spaces-dm-btn" title="Direct messages">DM</button>
+              <div class="spaces-rail-divider"></div>
+              <div id="spaces-server-list"></div>
+              <button type="button" class="space-pill add-pill" id="spaces-add-btn" title="Create space">+</button>
+            </div>
+            <div class="spaces-sidebar" id="spaces-sidebar">
+              <div class="spaces-side-header" id="spaces-side-header">Messages</div>
+              <div class="spaces-side-body" id="spaces-side-body"></div>
+            </div>
+            <div class="spaces-main" id="spaces-main">
+              <div class="spaces-main-header" id="spaces-main-header"><span id="spaces-channel-title">Select a chat</span></div>
+              <div class="spaces-messages" id="spaces-messages"><div class="empty"><div class="empty-icon">◈</div><p>Pick a space or message</p><p class="sub">Spaces combine groups and channels</p></div></div>
+              <div class="spaces-composer" id="spaces-composer"><input id="spaces-input" placeholder="Message…" disabled /><button id="spaces-send" class="btn primary" disabled>Send</button></div>
+            </div>
+          </div>
+        </section>
         <section id="view-chat" class="view"><div class="view-header"><h2>Chats</h2></div><div id="chat-list" class="list"></div></section>
         <section id="view-chat-dm" class="view"><button id="chat-back" class="btn small">← Back</button><h2 id="chat-title" style="margin:12px 0">Chat</h2><div id="chat-messages" class="chat-messages"></div><div class="chat-input-row"><input id="chat-input" placeholder="Message…" /><button id="chat-send" class="btn primary">Send</button></div></section>
-        <section id="view-communities" class="view"><div class="view-header"><h2>Communities</h2><button id="create-community-btn" class="btn small primary">Create</button></div><div id="communities-list" class="list"></div></section>
+        <section id="view-communities" class="view"><div class="view-header"><h2>Spaces</h2><button id="create-community-btn" class="btn small primary">Create</button></div><div id="communities-list" class="list"></div></section>
         <section id="view-community" class="view"><button id="com-back" class="btn small">← Back</button><div id="community-header" style="margin-top:12px"></div><div id="community-body"></div></section>
-        <section id="view-community-settings" class="view"><button id="com-settings-back" class="btn small">← Back</button><div class="view-header"><h2>Community Settings</h2></div><div id="com-settings-body"></div></section>
+        <section id="view-community-settings" class="view"><button id="com-settings-back" class="btn small">← Back</button><div class="view-header"><h2>Space Settings</h2></div><div id="com-settings-body"></div></section>
         <section id="view-community-chat" class="view"><button id="com-chat-back" class="btn small">← Back</button><h2 id="com-chat-title" style="margin:12px 0">Chat</h2><div id="com-chat-messages" class="chat-messages"></div><div class="chat-input-row"><input id="com-chat-input" placeholder="Message…" /><button id="com-chat-send" class="btn primary">Send</button></div></section>
         <section id="view-error" class="view"><div class="empty"><div class="empty-icon">⚠️</div><p>Page not found</p><button id="error-home-btn" class="btn primary" style="margin-top:16px">Go Home</button></div></section>
       </main>
@@ -63,7 +81,7 @@
         <a href="#home" data-view="home" class="nav-item active"><span class="icon">🏠</span><span>Home</span></a>
         <a href="#search" data-view="search" class="nav-item"><span class="icon">🔍</span><span>Search</span></a>
         <a href="#create" data-view="create" class="nav-item"><span class="icon">✏️</span><span>Create</span></a>
-        <a href="#chat" data-view="chat" class="nav-item"><span class="icon">💬</span><span>Chat</span></a>
+        <a href="#spaces" data-view="spaces" class="nav-item"><span class="icon">◈</span><span>Spaces</span></a>
         <a href="#more" data-view="more" class="nav-item"><span class="icon">☰</span><span>More</span></a>
       </nav>
     </div>
@@ -75,6 +93,7 @@
   <script src="/gc-fix.js"></script>
   <script src="/attachment-fix.js"></script>
   <script src="/settings-fix.js"></script>
+  <script src="/spaces-ui.js"></script>
   <script src="/invite-ui.js"></script>
   <script src="/error-route.js"></script>
 </body>
