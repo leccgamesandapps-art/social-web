@@ -3,7 +3,6 @@
   var me = DB.getSession().username;
   var tab = 'chat';
   var selected = null;
-
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');
   }
@@ -11,7 +10,6 @@
   function time(ts) {
     try { return new Date(ts).toLocaleString(); } catch (e) { return ''; }
   }
-
   function setTab(name) {
     tab = name;
     selected = null;
@@ -24,7 +22,6 @@
     renderList();
     clearPanel();
   }
-
   function clearPanel() {
     var title = document.getElementById('panel-title');
     var box = document.getElementById('panel-messages');
@@ -35,7 +32,6 @@
     if (input) { input.value = ''; input.disabled = true; }
     if (send) send.disabled = true;
   }
-
   function renderList() {
     var list = document.getElementById('chat-list');
     if (!list) return;
@@ -84,20 +80,17 @@
       };
     });
   }
-
   function msgHtml(m) {
     return '<div class="chat-msg"><div class="chat-msg-av">' + letter(m.from) + '</div>' +
       '<div><div class="chat-msg-meta"><strong>@' + esc(m.from) + '</strong>' + time(m.createdAt) + '</div>' +
       '<div class="chat-msg-text">' + esc(m.text) + '</div></div></div>';
   }
-
   function openSelected() {
     if (!selected) return clearPanel();
     var title = document.getElementById('panel-title');
     var box = document.getElementById('panel-messages');
     var input = document.getElementById('panel-input');
     var send = document.getElementById('panel-send');
-
     if (selected.type === 'dm' || selected.type === 'gc') {
       var chat = DB.getChat(selected.id);
       if (!chat) { clearPanel(); return; }
@@ -114,7 +107,6 @@
       input.placeholder = 'Message…';
       return;
     }
-
     var c = DB.getCommunity(selected.id);
     if (!c) { clearPanel(); return; }
     title.innerHTML = esc(c.name) + ' <button type="button" class="btn small" id="com-settings-btn" style="float:right;font-size:0.65rem;padding:3px 8px">⚙️ Settings</button>';
@@ -151,11 +143,15 @@
       };
     });
     box.scrollTop = box.scrollHeight;
-    input.disabled = false;
-    send.disabled = false;
-    input.placeholder = 'Message #' + (ch ? ch.name : '');
+    var canSend = typeof DB.hasCommunityPerm === 'function'
+      ? DB.hasCommunityPerm(selected.id, me, 'send_messages')
+      : true;
+    input.disabled = !canSend;
+    send.disabled = !canSend;
+    input.placeholder = canSend
+      ? ('Message #' + (ch ? ch.name : ''))
+      : 'You cannot send messages (role permission)';
   }
-
   function send() {
     var input = document.getElementById('panel-input');
     if (!input || input.disabled || !selected) return;
@@ -168,12 +164,12 @@
       return;
     }
     if (selected.type === 'community' && selected.channelId) {
-      DB.sendCommunityMessage(selected.id, selected.channelId, me, text);
+      var r = DB.sendCommunityMessage(selected.id, selected.channelId, me, text);
+      if (!r) alert('You cannot send messages');
       input.value = '';
       openSelected();
     }
   }
-
   function onAdd() {
     if (tab === 'community') {
       var n = prompt('Community name:');
@@ -198,7 +194,6 @@
       alert('Start a chat from Friends on the Feed');
     }
   }
-
   document.querySelectorAll('.chat-tab').forEach(function (b) {
     b.onclick = function () { setTab(b.getAttribute('data-tab')); };
   });
@@ -210,7 +205,6 @@
   if (input) input.onkeydown = function (e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
-
   window.ChatUI = {
     setTab: setTab,
     renderList: renderList,
@@ -227,6 +221,5 @@
       openSelected();
     }
   };
-
   setTab('chat');
 })();
