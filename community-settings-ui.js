@@ -1,9 +1,19 @@
-// Discord-style community settings by role
+// Community settings — Discord-like roles & permissions
 (function () {
   if (typeof DB === 'undefined') return;
   function esc(s) {
-    return String(s == null ? '' : s).replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/\"/g,'"');
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');
   }
+  var PERM_LABELS = {
+    view_channels: 'View channels',
+    send_messages: 'Send messages',
+    manage_messages: 'Manage messages',
+    manage_channels: 'Manage channels',
+    manage_roles: 'Manage roles',
+    kick_members: 'Kick members',
+    create_invite: 'Create invite',
+    administrator: 'Administrator (all perms)'
+  };
   function ensureRoot() {
     var r = document.getElementById('com-settings-overlay');
     if (!r) {
@@ -24,29 +34,35 @@
     var c = DB.getCommunity(communityId);
     if (!c) { alert('Community not found'); return; }
     var isOwner = DB.isCommunityOwner(communityId, me);
-    var isAdmin = DB.isCommunityAdmin(communityId, me);
-    var role = DB.getMemberRole(communityId, me);
-    var roleId = (role && role.id) || 'member';
-    var r = ensureRoot();
+    var canManageRoles = isOwner || DB.hasCommunityPerm(communityId, me, 'manage_roles');
+    var canManageChannels = isOwner || DB.hasCommunityPerm(communityId, me, 'manage_channels');
+    var canInvite = isOwner || DB.hasCommunityPerm(communityId, me, 'create_invite');
+    var canKick = isOwner || DB.hasCommunityPerm(communityId, me, 'kick_members');
     var tabs = [{ id: 'overview', label: 'Overview' }, { id: 'members', label: 'Members' }];
-    if (isAdmin) {
-      tabs.push({ id: 'channels', label: 'Channels' });
-      tabs.push({ id: 'invite', label: 'Invite' });
-      tabs.push({ id: 'roles', label: 'Roles' });
-    }
+    if (canManageChannels) tabs.push({ id: 'channels', label: 'Channels' });
+    if (canInvite) tabs.push({ id: 'invite', label: 'Invite' });
+    if (canManageRoles) tabs.push({ id: 'roles', label: 'Roles' });
     if (isOwner) tabs.push({ id: 'owner', label: 'Owner' });
     tabs.push({ id: 'me', label: 'My settings' });
+    var r = ensureRoot();
     r.innerHTML =
       '<div class="com-set-backdrop" data-close></div><div class="com-set-sheet"><div class="com-set-bar">' +
-      '<button type="button" class="btn small" data-close>Close</button><strong>' + esc(c.name) + ' · Settings</strong>' +
-      '<span class="com-set-role-badge">' + esc(role.name || roleId) + '</span></div><div class="com-set-tabs">' +
+      '<button type="button" class="btn small" data-close>Close</button><strong>' + esc(c.name) + '</strong>' +
+      '<span class="com-set-role-badge">' + (isOwner ? 'Owner' : 'Member') + '</span></div><div class="com-set-tabs">' +
       tabs.map(function (t, i) {
         return '<button type="button" class="com-set-tab' + (i === 0 ? ' active' : '') + '" data-tab="' + t.id + '">' + t.label + '</button>';
       }).join('') +
       '</div><div class="com-set-body" id="com-set-body"></div></div>';
     r.classList.add('open');
     r.querySelectorAll('[data-close]').forEach(function (el) { el.onclick = close; });
-    var state = { tab: tabs[0].id };
+    var state = { tab: tabs[0].id, editRoleId: null };
+    function roleNameList(user) {
+      var ids = DB.getMemberRoleIds(communityId, user);
+      if (!ids.length) return 'No roles';
+      return ids.map(function (id) {
+        return (c.roles && c.roles[id] && c.roles[id].name) || id;
+      }).join(', ');
+    }
     function paint() {
       r.querySelectorAll('.com-set-tab').forEach(function (b) {
         b.classList.toggle('active', b.getAttribute('data-tab') === state.tab);
@@ -57,19 +73,19 @@
       if (state.tab === 'overview') {
         body.innerHTML =
           '<p class="meta">Members: ' + (c.members || []).length + '</p>' +
-          '<p class="meta">Owner: @' + esc(c.owner) + '</p>' +
-          '<p class="meta">Your role: <strong>' + esc(role.name || roleId) + '</strong></p>' +
-          (c.description ? '<p>' + esc(c.description) + '</p>' : '<p class="meta">No description</p>') +
-          (isAdmin
+          '<p class="meta">Owner: @' + esc(c.owner) + ' <em>(not a role)</em></p>' +
+          '<p class="meta">You: ' + (isOwner ? 'Owner' : 'Member') +
+          (DB.getMemberRoleIds(communityId, me).length ? ' · roles: ' + esc(roleNameList(me)) : ' · no extra roles') + '</p>' +
+          (c.description ? '<p>' + esc(c.description) + '</p>' : '') +
+          (isOwner || DB.hasCommunityPerm(communityId, me, 'manage_channels')
             ? '<label class="meta">Name</label><input id="cs-name" value="' + esc(c.name) + '" />' +
               '<label class="meta">Description</label><textarea id="cs-desc" rows="2">' + esc(c.description || '') + '</textarea>' +
-              '<button type="button" class="btn primary" id="cs-save-info">Save info</button>'
+              '<button type="button" class="btn primary" id="cs-save-info">Save</button>'
             : '');
         var save = document.getElementById('cs-save-info');
         if (save) save.onclick = function () {
           var data = DB._load();
           var cc = data.communities[communityId];
-          if (!cc) return;
           cc.name = (document.getElementById('cs-name').value || cc.name).trim();
           cc.description = (document.getElementById('cs-desc').value || '').trim();
           DB._save(data);
@@ -79,31 +95,32 @@
       }
       if (state.tab === 'members') {
         body.innerHTML = (c.members || []).map(function (m) {
-          var rid = DB.getMemberRoleId(communityId, m);
-          var rn = (c.roles && c.roles[rid] && c.roles[rid].name) || rid;
+          var isOwn = String(m).toLowerCase() === String(c.owner).toLowerCase();
+          var roles = roleNameList(m);
           var actions = '';
-          if (isAdmin && String(m).toLowerCase() !== String(c.owner).toLowerCase()) {
-            actions = '<select data-user="' + esc(m) + '" class="cs-role-sel">' +
-              Object.values(c.roles || {}).filter(function (rr) { return rr.id !== 'owner'; }).map(function (rr) {
-                if (!isOwner && rr.id === 'admin') return '';
-                return '<option value="' + esc(rr.id) + '"' + (rr.id === rid ? ' selected' : '') + '>' + esc(rr.name) + '</option>';
-              }).join('') + '</select>';
-            if (DB.hasCommunityPerm(communityId, me, 'kick') || isOwner) {
-              actions += ' <button type="button" class="btn small danger cs-kick" data-user="' + esc(m) + '">Kick</button>';
-            }
+          if (!isOwn && canManageRoles) {
+            var roleOpts = Object.values(c.roles || {}).map(function (rr) {
+              var has = DB.getMemberRoleIds(communityId, m).indexOf(rr.id) >= 0;
+              return '<option value="' + esc(rr.id) + '">' + (has ? '✓ ' : '+ ') + esc(rr.name) + '</option>';
+            }).join('');
+            if (roleOpts) actions += '<select class="cs-give-role" data-user="' + esc(m) + '"><option value="">Give / toggle role…</option>' + roleOpts + '</select>';
           }
-          return '<div class="cs-row"><span>@' + esc(m) + ' · ' + esc(rn) + '</span><span>' + actions + '</span></div>';
+          if (!isOwn && canKick) actions += ' <button type="button" class="btn small danger cs-kick" data-user="' + esc(m) + '">Kick</button>';
+          return '<div class="cs-row"><span><strong>@' + esc(m) + '</strong>' + (isOwn ? ' · Owner' : ' · ' + esc(roles)) + '</span><span>' + actions + '</span></div>';
         }).join('') || '<p class="meta">No members</p>';
-        body.querySelectorAll('.cs-role-sel').forEach(function (sel) {
+        body.querySelectorAll('.cs-give-role').forEach(function (sel) {
           sel.onchange = function () {
-            var res = DB.setMemberRole(communityId, sel.getAttribute('data-user'), sel.value, me);
+            var rid = sel.value; if (!rid) return;
+            var user = sel.getAttribute('data-user');
+            var has = DB.getMemberRoleIds(communityId, user).indexOf(rid) >= 0;
+            var res = has ? DB.removeRoleFromMember(communityId, user, rid, me) : DB.giveRole(communityId, user, rid, me);
             if (!res.ok) alert(res.error || 'Failed');
             paint();
           };
         });
         body.querySelectorAll('.cs-kick').forEach(function (btn) {
           btn.onclick = function () {
-            if (!confirm('Kick?')) return;
+            if (!confirm('Kick @' + btn.getAttribute('data-user') + '?')) return;
             var data = DB._load();
             var cc = data.communities[communityId];
             var u = btn.getAttribute('data-user').toLowerCase();
@@ -115,7 +132,7 @@
           };
         });
       }
-      if (state.tab === 'channels' && isAdmin) {
+      if (state.tab === 'channels' && canManageChannels) {
         var cats = c.categories || [];
         var chats = Object.values(c.chats || {});
         body.innerHTML =
@@ -144,55 +161,86 @@
           paint();
         };
       }
-      if (state.tab === 'invite' && isAdmin) {
+      if (state.tab === 'invite' && canInvite) {
         var link = location.origin + '/chat#invite=c_' + encodeURIComponent(communityId);
-        body.innerHTML =
-          '<p class="meta">Default permanent invite</p><div class="cs-link">' + esc(link) + '</div>' +
-          '<button type="button" class="btn primary" id="cs-copy-inv">Copy link</button>';
+        body.innerHTML = '<p class="meta">Invite link</p><div class="cs-link">' + esc(link) + '</div><button type="button" class="btn primary" id="cs-copy-inv">Copy</button>';
         document.getElementById('cs-copy-inv').onclick = function () {
           if (navigator.clipboard) navigator.clipboard.writeText(link);
           alert('Copied');
         };
       }
-      if (state.tab === 'roles' && isAdmin) {
-        body.innerHTML = Object.values(c.roles || {}).map(function (rr) {
-          return '<div class="cs-row"><span><strong>' + esc(rr.name) + '</strong> · ' + esc((rr.permissions || []).join(', ')) + '</span></div>';
-        }).join('') +
-          (isOwner
-            ? '<button type="button" class="btn primary" id="cs-add-role" style="margin-top:10px">+ Add role</button>'
-            : '<p class="meta" style="margin-top:10px">Only the owner can create new roles</p>');
-        var addR = document.getElementById('cs-add-role');
-        if (addR) addR.onclick = function () {
-          var n = prompt('Role name:');
-          if (!n) return;
-          var res = DB.addCommunityRole(communityId, n.trim(), ['chat', 'view'], me);
-          if (!res.ok) alert(res.error || 'Failed');
-          paint();
-        };
+      if (state.tab === 'roles' && canManageRoles) {
+        if (state.editRoleId && c.roles[state.editRoleId]) {
+          var role = c.roles[state.editRoleId];
+          var perms = role.permissions || {};
+          body.innerHTML =
+            '<button type="button" class="btn small" id="cs-role-back">← Roles</button>' +
+            '<h3 style="margin:10px 0 6px">Edit: ' + esc(role.name) + '</h3>' +
+            '<label class="meta">Name</label><input id="cs-role-name" value="' + esc(role.name) + '" />' +
+            '<p class="meta" style="margin-top:10px">Permissions</p>' +
+            Object.keys(PERM_LABELS).map(function (k) {
+              var v = perms[k];
+              var sel = v === true ? 'allow' : (v === false ? 'deny' : 'inherit');
+              return '<div class="cs-row"><span>' + esc(PERM_LABELS[k]) + '</span><select data-perm="' + k + '" class="cs-perm">' +
+                '<option value="inherit"' + (sel === 'inherit' ? ' selected' : '') + '>Inherit</option>' +
+                '<option value="allow"' + (sel === 'allow' ? ' selected' : '') + '>Allow</option>' +
+                '<option value="deny"' + (sel === 'deny' ? ' selected' : '') + '>Deny</option></select></div>';
+            }).join('') +
+            '<button type="button" class="btn primary" id="cs-role-save" style="margin-top:12px">Save role</button> ' +
+            '<button type="button" class="btn danger" id="cs-role-del">Delete role</button>';
+          document.getElementById('cs-role-back').onclick = function () { state.editRoleId = null; paint(); };
+          document.getElementById('cs-role-save').onclick = function () {
+            var permissions = {};
+            body.querySelectorAll('.cs-perm').forEach(function (s) {
+              var k = s.getAttribute('data-perm');
+              if (s.value === 'allow') permissions[k] = true;
+              else if (s.value === 'deny') permissions[k] = false;
+              else permissions[k] = null;
+            });
+            var res = DB.updateRole(communityId, state.editRoleId, {
+              name: document.getElementById('cs-role-name').value.trim() || role.name,
+              permissions: permissions
+            }, me);
+            if (!res.ok) alert(res.error || 'Failed');
+            else { state.editRoleId = null; paint(); }
+          };
+          document.getElementById('cs-role-del').onclick = function () {
+            if (!confirm('Delete this role?')) return;
+            var res = DB.deleteRole(communityId, state.editRoleId, me);
+            if (!res.ok) alert(res.error || 'Failed');
+            state.editRoleId = null;
+            paint();
+          };
+        } else {
+          var roles = Object.values(c.roles || {});
+          body.innerHTML =
+            '<p class="meta">Members start with <strong>no roles</strong>. Create roles (e.g. Mute) and give them on Members.</p>' +
+            '<p class="meta">Mute example: Send messages = <strong>Deny</strong>, View channels = Allow</p>' +
+            roles.map(function (rr) {
+              return '<div class="cs-row"><span><strong>' + esc(rr.name) + '</strong></span>' +
+                '<button type="button" class="btn small cs-edit-role" data-rid="' + esc(rr.id) + '">Edit</button></div>';
+            }).join('') +
+            (roles.length ? '' : '<p class="meta">No custom roles yet</p>') +
+            '<button type="button" class="btn primary" id="cs-add-role" style="margin-top:12px">+ Create role</button>';
+          body.querySelectorAll('.cs-edit-role').forEach(function (b) {
+            b.onclick = function () { state.editRoleId = b.getAttribute('data-rid'); paint(); };
+          });
+          document.getElementById('cs-add-role').onclick = function () {
+            var n = prompt('Role name (e.g. Mute, Moderator):');
+            if (!n) return;
+            var perms = {};
+            if (/mute/i.test(n)) { perms.send_messages = false; perms.view_channels = true; }
+            var res = DB.createRole(communityId, n.trim(), perms, me);
+            if (!res.ok) alert(res.error || 'Failed');
+            else { state.editRoleId = res.role.id; paint(); }
+          };
+        }
       }
       if (state.tab === 'owner' && isOwner) {
         body.innerHTML =
-          '<p class="meta">Owner-only controls</p>' +
-          '<button type="button" class="btn" id="cs-transfer">Transfer ownership</button>' +
-          '<button type="button" class="btn danger" id="cs-delete" style="margin-top:8px">Delete community</button>';
-        document.getElementById('cs-transfer').onclick = function () {
-          var to = prompt('Transfer to username:');
-          if (!to) return;
-          var data = DB._load();
-          var cc = data.communities[communityId];
-          var t = to.trim().toLowerCase();
-          if (!(cc.members || []).map(function (m) { return String(m).toLowerCase(); }).includes(t)) {
-            alert('User must be a member'); return;
-          }
-          var old = String(cc.owner).toLowerCase();
-          cc.owner = t;
-          if (!cc.memberRoles) cc.memberRoles = {};
-          cc.memberRoles[t] = 'owner';
-          if (cc.memberRoles[old] === 'owner') cc.memberRoles[old] = 'admin';
-          DB._save(data);
-          alert('Ownership transferred');
-          close();
-        };
+          '<p class="meta">Owner owns this community. Ownership cannot be transferred.</p>' +
+          '<p class="meta">Owner is not a role — roles are for other members only.</p>' +
+          '<button type="button" class="btn danger" id="cs-delete">Delete community</button>';
         document.getElementById('cs-delete').onclick = function () {
           if (!confirm('Delete this community forever?')) return;
           var data = DB._load();
@@ -204,14 +252,20 @@
         };
       }
       if (state.tab === 'me') {
+        var p = DB.getEffectivePerms(communityId, me);
         body.innerHTML =
-          '<p class="meta">Your role: <strong>' + esc(role.name || roleId) + '</strong></p>' +
+          '<p class="meta">' + (isOwner ? 'You are the <strong>Owner</strong> (full access).' : 'You are a <strong>Member</strong>.') + '</p>' +
+          '<p class="meta">Roles: ' + esc(roleNameList(me)) + '</p>' +
+          '<p class="meta">Permissions:</p><ul style="margin:0;padding-left:18px;font-size:0.8rem">' +
+          Object.keys(PERM_LABELS).map(function (k) {
+            return '<li>' + esc(PERM_LABELS[k]) + ': ' + (p[k] ? 'Yes' : 'No') + '</li>';
+          }).join('') + '</ul>' +
           (isOwner
-            ? '<p class="meta">You are the owner. Transfer ownership before leaving.</p>'
-            : '<button type="button" class="btn danger" id="cs-leave">Leave community</button>');
+            ? '<p class="meta" style="margin-top:12px">Owner cannot leave — delete the community instead.</p>'
+            : '<button type="button" class="btn danger" id="cs-leave" style="margin-top:12px">Leave community</button>');
         var leave = document.getElementById('cs-leave');
         if (leave) leave.onclick = function () {
-          if (!confirm('Leave this community?')) return;
+          if (!confirm('Leave?')) return;
           var res = DB.leaveCommunity(communityId, me);
           if (!res.ok) alert(res.error || 'Failed');
           else {
@@ -222,7 +276,7 @@
       }
     }
     r.querySelectorAll('.com-set-tab').forEach(function (b) {
-      b.onclick = function () { state.tab = b.getAttribute('data-tab'); paint(); };
+      b.onclick = function () { state.tab = b.getAttribute('data-tab'); state.editRoleId = null; paint(); };
     });
     paint();
   }
@@ -243,7 +297,8 @@
       '.cs-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}' +
       '.cs-block{margin:8px 0;padding:8px;border-radius:10px;background:rgba(255,255,255,.04)}' +
       '.cs-link{word-break:break-all;padding:8px;border-radius:8px;background:rgba(0,0,0,.25);margin:8px 0;font-size:.75rem}' +
-      '.com-set-body input,.com-set-body textarea,.com-set-body select{width:100%;margin:4px 0 8px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.25);color:#fff}' +
+      '.com-set-body input,.com-set-body textarea,.com-set-body select{width:100%;max-width:200px;margin:4px 0 8px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.25);color:#fff}' +
+      '.cs-row select{max-width:140px}' +
       '.com-set-body .btn{margin-top:6px}';
     document.head.appendChild(s);
   }
