@@ -7,10 +7,12 @@
   <title>Social Web</title>
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/spaces.css" />
+  <link rel="stylesheet" href="/menu.css" />
 </head>
 <body>
   <div id="guard" class="loader-screen"><div class="spinner"></div><p>Checking session...</p></div>
   <div id="sw-modal-root"></div>
+  <div id="sw-menu-root"></div>
   <div id="app" class="app hidden">
     <aside class="sidebar">
       <div class="logo">
@@ -21,10 +23,10 @@
         <a href="#home" data-view="home" class="nav-item active"><span class="icon">🏠</span> Home</a>
         <a href="#search" data-view="search" class="nav-item"><span class="icon">🔍</span> Search</a>
         <a href="#create" data-view="create" class="nav-item"><span class="icon">✏️</span> Create</a>
-        <a href="#spaces" data-view="spaces" class="nav-item"><span class="icon">◈</span> Spaces</a>
-        <a href="#friends" data-view="friends" class="nav-item"><span class="icon">👥</span> Friends</a>
-        <a href="#notifications" data-view="notifications" class="nav-item"><span class="icon">🔔</span> Alerts <span id="notif-badge" class="badge hidden">0</span></a>
+        <a href="#spaces" data-view="spaces" class="nav-item"><span class="icon">💬</span> Chat</a>
         <a href="#profile" data-view="profile" class="nav-item"><span class="icon">👤</span> Profile</a>
+        <a href="#friends" data-view="friends" class="nav-item"><span class="icon">👥</span> Friends</a>
+        <a href="#notifications" data-view="notifications" class="nav-item"><span class="icon">🔔</span> Alerts</a>
         <a href="#settings" data-view="settings" class="nav-item"><span class="icon">⚙️</span> Settings</a>
       </nav>
       <div class="user-mini">
@@ -33,11 +35,10 @@
     </aside>
     <div class="main-wrap">
       <header class="mobile-header">
-        <div class="logo">
+        <div class="logo logo-center">
           <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="12" fill="url(#gm)"/><circle cx="24" cy="24" r="10" stroke="white" stroke-width="3"/><circle cx="24" cy="24" r="4" fill="white"/><defs><linearGradient id="gm" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#8b7cff"/><stop offset="1" stop-color="#6c5ce7"/></linearGradient></defs></svg>
           Social Web
         </div>
-        <div style="display:flex;gap:8px"><button id="more-btn-mobile" class="btn small">Menu</button></div>
       </header>
       <main class="main-content">
         <section id="view-home" class="view active"><div class="view-header"><h2>Feed</h2></div><div id="feed" class="feed"></div></section>
@@ -65,7 +66,7 @@
             </div>
             <div class="spaces-main" id="spaces-main">
               <div class="spaces-main-header" id="spaces-main-header"><span id="spaces-channel-title">Select a chat</span></div>
-              <div class="spaces-messages" id="spaces-messages"><div class="empty"><div class="empty-icon">◈</div><p>Pick a space or message</p><p class="sub">Spaces combine groups and channels</p></div></div>
+              <div class="spaces-messages" id="spaces-messages"><div class="empty"><div class="empty-icon">💬</div><p>Pick a chat or space</p><p class="sub">Messages and groups in one place</p></div></div>
               <div class="spaces-composer" id="spaces-composer"><input id="spaces-input" placeholder="Message…" disabled /><button id="spaces-send" class="btn primary" disabled>Send</button></div>
             </div>
           </div>
@@ -82,8 +83,8 @@
         <a href="#home" data-view="home" class="nav-item active"><span class="icon">🏠</span><span>Home</span></a>
         <a href="#search" data-view="search" class="nav-item"><span class="icon">🔍</span><span>Search</span></a>
         <a href="#create" data-view="create" class="nav-item"><span class="icon">✏️</span><span>Create</span></a>
-        <a href="#spaces" data-view="spaces" class="nav-item"><span class="icon">◈</span><span>Spaces</span></a>
-        <a href="#more" data-view="more" class="nav-item"><span class="icon">☰</span><span>More</span></a>
+        <a href="#spaces" data-view="spaces" class="nav-item"><span class="icon">💬</span><span>Chat</span></a>
+        <a href="#menu" data-view="menu" class="nav-item" id="bottom-menu-btn"><span class="icon">☰</span><span>Menu</span></a>
       </nav>
     </div>
   </div>
