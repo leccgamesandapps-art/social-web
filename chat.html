@@ -6,57 +6,54 @@
   <meta name="robots" content="noindex" />
   <title>Social Web · Chat</title>
   <link rel="stylesheet" href="/styles.css" />
-  <link rel="stylesheet" href="/spaces.css" />
   <link rel="stylesheet" href="/water.css" />
+  <link rel="stylesheet" href="/chat-layout.css" />
 </head>
 <body class="chat-page water-bg">
   <div class="water-layer" aria-hidden="true"></div>
   <div id="guard" class="loader-screen"><div class="spinner"></div><p>Checking session...</p></div>
   <div id="sw-modal-root"></div>
 
-  <div id="app" class="app chat-app hidden">
-    <header class="chat-top">
-      <a href="/dashboard#home" class="chat-top-back btn small">← Feed</a>
-      <div class="logo logo-center">
-        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="12" fill="url(#cg)"/><circle cx="24" cy="24" r="10" stroke="white" stroke-width="3"/><circle cx="24" cy="24" r="4" fill="white"/><defs><linearGradient id="cg" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#5b8cff"/><stop offset="1" stop-color="#8b7cff"/></linearGradient></defs></svg>
-        Chat
+  <div id="app" class="chat-shell hidden">
+    <header class="chat-top1">
+      <a href="/dashboard#home" class="feed-btn">← Feed</a>
+      <div class="chat-brand">
+        <svg viewBox="0 0 48 48" width="28" height="28" fill="none"><rect width="48" height="48" rx="12" fill="url(#cg)"/><circle cx="24" cy="24" r="10" stroke="white" stroke-width="3"/><circle cx="24" cy="24" r="4" fill="white"/><defs><linearGradient id="cg" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#5b8cff"/><stop offset="1" stop-color="#8b7cff"/></linearGradient></defs></svg>
+        <span>Chat</span>
       </div>
-      <span class="chat-top-spacer"></span>
+      <span class="feed-btn spacer"></span>
     </header>
 
-    <section id="view-spaces" class="view spaces-view active">
-      <div class="spaces-layout">
-        <div class="spaces-rail" id="spaces-rail">
-          <button type="button" class="space-pill dm-pill active" id="spaces-dm-btn" title="Direct messages">DM</button>
-          <div class="spaces-rail-divider"></div>
-          <div id="spaces-server-list"></div>
-          <button type="button" class="space-pill add-pill" id="spaces-add-btn" title="Create space">+</button>
-        </div>
-        <div class="spaces-sidebar" id="spaces-sidebar">
-          <div class="spaces-side-header" id="spaces-side-header">Messages</div>
-          <div class="spaces-side-body" id="spaces-side-body"></div>
-        </div>
-        <div class="spaces-main" id="spaces-main">
-          <div class="spaces-main-header" id="spaces-main-header"><span id="spaces-channel-title">Select a chat</span></div>
-          <div class="spaces-messages" id="spaces-messages">
-            <div class="empty"><div class="empty-icon">💬</div><p>Pick a chat or space</p><p class="sub">Messages and groups live here</p></div>
-          </div>
-          <div class="spaces-composer" id="spaces-composer">
-            <input id="spaces-input" placeholder="Message…" disabled />
-            <button id="spaces-send" class="btn primary" disabled>Send</button>
-          </div>
-        </div>
-      </div>
-    </section>
+    <nav class="chat-tabs" id="chat-tabs">
+      <button type="button" class="chat-tab active" data-tab="chat">Chat</button>
+      <button type="button" class="chat-tab" data-tab="gc">GC</button>
+      <button type="button" class="chat-tab" data-tab="community">Community</button>
+    </nav>
 
-    <section id="view-community" class="view hidden-view"><div id="community-header"></div><div id="community-body"></div></section>
-    <section id="view-community-settings" class="view hidden-view"><div id="com-settings-body"></div></section>
+    <div class="chat-body">
+      <aside class="chat-list-pane">
+        <div class="chat-list-head">
+          <span id="list-title">Chats</span>
+          <button type="button" class="btn small" id="list-add-btn">+</button>
+        </div>
+        <div class="chat-list" id="chat-list"></div>
+      </aside>
+      <main class="chat-panel-pane">
+        <div class="chat-panel-head" id="panel-title">Select a conversation</div>
+        <div class="chat-panel-messages" id="panel-messages">
+          <div class="empty"><p>Choose a chat from the list</p></div>
+        </div>
+        <div class="chat-panel-compose" id="panel-compose">
+          <input id="panel-input" placeholder="Message…" disabled />
+          <button type="button" class="btn primary" id="panel-send" disabled>Send</button>
+        </div>
+      </main>
+    </div>
   </div>
 
   <script src="/db.js"></script>
   <script src="/chat-auth.js"></script>
-  <script src="/spaces-ui.js"></script>
+  <script src="/chat-ui.js"></script>
   <script src="/chat-invite.js"></script>
-  <script src="/invite-ui.js"></script>
 </body>
 </html>
