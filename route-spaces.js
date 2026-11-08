@@ -1,4 +1,4 @@
-// Ensure #spaces and legacy chat/communities route correctly
+// Spaces route - must win over error-route
 (function () {
   function goSpaces() {
     document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
@@ -6,16 +6,24 @@
     if (el) el.classList.add('active');
     document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
     document.querySelectorAll('[data-view="spaces"]').forEach(function (n) { n.classList.add('active'); });
-    if (window.SpacesUI) window.SpacesUI.render();
-  }
-  function check() {
-    var h = (location.hash || '#home').slice(1);
-    var root = h.split('=')[0];
-    if (root === 'spaces' || root === 'chat' || root === 'communities') {
-      if (root !== 'spaces') location.hash = '#spaces';
-      else goSpaces();
+    if (window.SpacesUI) {
+      try { window.SpacesUI.render(); } catch (e) {}
     }
   }
-  window.addEventListener('hashchange', check);
-  setTimeout(check, 100);
+  function rootOf() {
+    var h = (location.hash || '#home').slice(1);
+    return (h.split('=')[0] || 'home');
+  }
+  function check() {
+    var root = rootOf();
+    if (root === 'chat' || root === 'communities') {
+      location.hash = '#spaces';
+      return;
+    }
+    if (root === 'spaces') goSpaces();
+  }
+  window.addEventListener('hashchange', check, true);
+  setTimeout(check, 30);
+  setTimeout(check, 120);
+  setTimeout(check, 300);
 })();
