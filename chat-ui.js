@@ -5,7 +5,7 @@
   var selected = null;
 
   function esc(s) {
-    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');
   }
   function letter(n) { return ((n || '?')[0] || '?').toUpperCase(); }
   function time(ts) {
@@ -40,7 +40,6 @@
     var list = document.getElementById('chat-list');
     if (!list) return;
     var html = '';
-
     if (tab === 'chat') {
       var chats = (DB.listChats(me) || []).filter(function (c) { return c.type !== 'gc'; });
       if (!chats.length) html = '<p class="meta" style="padding:12px">No DMs yet</p>';
@@ -50,7 +49,7 @@
           var active = selected && selected.id === c.id ? ' active' : '';
           return '<button type="button" class="chat-list-item' + active + '" data-type="dm" data-id="' + esc(c.id) + '">' +
             '<div class="chat-list-av">' + letter(other) + '</div>' +
-            '<div class="chat-list-meta"><strong>@' + esc(other) + '</strong><span>Direct message</span></div></button>';
+            '<div class="chat-list-meta"><strong>@' + esc(other) + '</strong></div></button>';
         }).join('');
       }
     } else if (tab === 'gc') {
@@ -61,7 +60,7 @@
           var active = selected && selected.id === c.id ? ' active' : '';
           return '<button type="button" class="chat-list-item' + active + '" data-type="gc" data-id="' + esc(c.id) + '">' +
             '<div class="chat-list-av">' + letter(c.name) + '</div>' +
-            '<div class="chat-list-meta"><strong>' + esc(c.name || 'Group') + '</strong><span>Group · ' + (c.members || []).length + '</span></div></button>';
+            '<div class="chat-list-meta"><strong>' + esc(c.name || 'Group') + '</strong></div></button>';
         }).join('');
       }
     } else {
@@ -72,11 +71,10 @@
           var active = selected && selected.id === c.id ? ' active' : '';
           return '<button type="button" class="chat-list-item' + active + '" data-type="community" data-id="' + esc(c.id) + '">' +
             '<div class="chat-list-av">' + letter(c.name) + '</div>' +
-            '<div class="chat-list-meta"><strong>' + esc(c.name) + '</strong><span>' + (c.members || []).length + ' members</span></div></button>';
+            '<div class="chat-list-meta"><strong>' + esc(c.name) + '</strong></div></button>';
         }).join('');
       }
     }
-
     list.innerHTML = html;
     list.querySelectorAll('[data-id]').forEach(function (btn) {
       btn.onclick = function () {
@@ -119,7 +117,16 @@
 
     var c = DB.getCommunity(selected.id);
     if (!c) { clearPanel(); return; }
-    title.textContent = c.name;
+    title.innerHTML = esc(c.name) + ' <button type="button" class="btn small" id="com-settings-btn" style="float:right;font-size:0.65rem;padding:3px 8px">⚙️ Settings</button>';
+    setTimeout(function () {
+      var sb = document.getElementById('com-settings-btn');
+      if (sb) sb.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.CommunitySettings) window.CommunitySettings.open(selected.id);
+        else alert('Settings unavailable');
+      };
+    }, 0);
     var chats = Object.values(c.chats || {});
     if (!chats.length) {
       box.innerHTML = '<div class="empty"><p>No channels</p></div>';
@@ -134,8 +141,8 @@
         var on = x.id === selected.channelId ? ' primary' : '';
         return '<button type="button" class="btn small' + on + '" data-ch="' + esc(x.id) + '">#' + esc(x.name) + '</button>';
       }).join('') + '</div>';
-    var msgs = (ch && ch.messages) || [];
-    box.innerHTML = chBar + (msgs.length ? msgs.map(msgHtml).join('') :
+    var msgs2 = (ch && ch.messages) || [];
+    box.innerHTML = chBar + (msgs2.length ? msgs2.map(msgHtml).join('') :
       '<div class="empty"><p>No messages in #' + esc(ch.name) + '</p></div>');
     box.querySelectorAll('[data-ch]').forEach(function (b) {
       b.onclick = function () {
@@ -180,12 +187,12 @@
     } else if (tab === 'gc') {
       var name = prompt('Group chat name:');
       if (!name) return;
-      if (typeof DB.createGC === 'function') {
-        var g = DB.createGC(me, name.trim(), []);
+      if (typeof DB.createGroupChat === 'function') {
+        var g = DB.createGroupChat(me, name.trim(), []);
         if (g && g.ok) {
           selected = { type: 'gc', id: g.chat.id };
           renderList(); openSelected();
-        } else alert((g && g.error) || 'Failed');
+        } else alert((g && g.error) || 'Need friends to create GC');
       } else alert('GC not available');
     } else {
       alert('Start a chat from Friends on the Feed');
