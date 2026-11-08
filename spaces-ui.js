@@ -92,7 +92,7 @@
       }
       html += '<div class="spaces-cat">Friends</div>';
       if (!dms.length) {
-        html += '<p class="meta" style="padding:8px 12px">No DMs yet — open Friends to message someone</p>';
+        html += '<p class="meta" style="padding:8px 12px">No DMs yet</p>';
       } else {
         html += dms.map(function (c) {
           var other = (c.members || []).filter(function (m) { return m !== me; })[0] || 'user';
@@ -117,10 +117,7 @@
       body.innerHTML = '<p class="meta" style="padding:8px 12px">Select a space</p>';
       return;
     }
-    header.innerHTML = esc(c.name) +
-      (String(c.owner).toLowerCase() === String(me).toLowerCase()
-        ? ' <button type="button" class="btn small" id="space-settings-mini">Settings</button>'
-        : '');
+    header.innerHTML = esc(c.name);
     var cats = c.categories || [{ id: 'general', name: 'General' }];
     var chats = Object.values(c.chats || {});
     var html = '';
@@ -138,12 +135,6 @@
     });
     html += '<div class="spaces-cat">Members · ' + (c.members || []).length + '</div>';
     body.innerHTML = html;
-    var setBtn = document.getElementById('space-settings-mini');
-    if (setBtn) {
-      setBtn.onclick = function () {
-        location.hash = '#community=' + encodeURIComponent(c.id) + '=settings';
-      };
-    }
     body.querySelectorAll('[data-ch]').forEach(function (btn) {
       btn.onclick = function () {
         state.channelId = btn.getAttribute('data-ch');
@@ -184,7 +175,7 @@
     var c = DB.getCommunity(state.spaceId);
     if (!c || !state.channelId || !c.chats || !c.chats[state.channelId]) {
       title.textContent = c ? c.name : 'Space';
-      box.innerHTML = '<div class="empty"><div class="empty-icon">◈</div><p>Select a channel</p></div>';
+      box.innerHTML = '<div class="empty"><div class="empty-icon">💬</div><p>Select a channel</p></div>';
       setComposer(false, 'Select a channel…');
       return;
     }
@@ -201,8 +192,7 @@
       return;
     }
     box.innerHTML = msgs.map(function (m) {
-      var mine = m.from === me;
-      return '<div class="space-msg' + (mine ? ' mine' : '') + '">' +
+      return '<div class="space-msg">' +
         '<div class="space-msg-av">' + letter(m.from) + '</div>' +
         '<div class="space-msg-body"><div class="space-msg-meta"><strong>@' + esc(m.from) + '</strong>' +
         '<span class="time">' + time(m.createdAt) + '</span></div>' +
@@ -256,6 +246,7 @@
   });
   setTimeout(function () {
     wire();
-    if ((location.hash || '').indexOf('spaces') !== -1) renderAll();
+    var onChat = (location.pathname || '').indexOf('chat') !== -1;
+    if (onChat || (location.hash || '').indexOf('spaces') !== -1) renderAll();
   }, 150);
 })();
