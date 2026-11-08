@@ -3,6 +3,8 @@
     { "source": "/main", "destination": "/main.html" },
     { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/dashboard/(.*)", "destination": "/dashboard.html" },
+    { "source": "/chat", "destination": "/chat.html" },
+    { "source": "/chat/(.*)", "destination": "/chat.html" },
     { "source": "/", "destination": "/main.html" }
   ],
   "headers": [
