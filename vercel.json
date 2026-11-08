@@ -5,6 +5,10 @@
     { "source": "/dashboard/(.*)", "destination": "/dashboard.html" },
     { "source": "/chat", "destination": "/chat.html" },
     { "source": "/chat/(.*)", "destination": "/chat.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/admin/(.*)", "destination": "/admin.html" },
+    { "source": "/owner", "destination": "/owner.html" },
+    { "source": "/owner/(.*)", "destination": "/owner.html" },
     { "source": "/", "destination": "/main.html" }
   ],
   "headers": [
