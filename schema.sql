@@ -1,0 +1,45 @@
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(32) UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  display_name VARCHAR(64) NOT NULL,
+  bio TEXT DEFAULT '',
+  status VARCHAR(20) DEFAULT 'active',
+  status_until TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS posts (
+  id VARCHAR(32) PRIMARY KEY,
+  author VARCHAR(32) NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS post_likes (
+  post_id VARCHAR(32) REFERENCES posts(id) ON DELETE CASCADE,
+  username VARCHAR(32) REFERENCES users(username) ON DELETE CASCADE,
+  PRIMARY KEY (post_id, username)
+);
+CREATE TABLE IF NOT EXISTS comments (
+  id VARCHAR(32) PRIMARY KEY,
+  post_id VARCHAR(32) REFERENCES posts(id) ON DELETE CASCADE,
+  author VARCHAR(32) REFERENCES users(username) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS friendships (
+  user_a VARCHAR(32) REFERENCES users(username) ON DELETE CASCADE,
+  user_b VARCHAR(32) REFERENCES users(username) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_a, user_b)
+);
+CREATE TABLE IF NOT EXISTS moderation_logs (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(32) NOT NULL,
+  action VARCHAR(40) NOT NULL,
+  by_role VARCHAR(20),
+  by_name VARCHAR(64),
+  note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);

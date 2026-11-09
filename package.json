@@ -1,5 +1,8 @@
 {
   "name": "social-web",
-  "version": "1.0.0",
-  "private": true
+  "version": "1.1.0",
+  "private": true,
+  "dependencies": {
+    "@vercel/postgres": "^0.10.0"
+  }
 }
