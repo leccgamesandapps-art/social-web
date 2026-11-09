@@ -10,25 +10,17 @@
   <link rel="stylesheet" href="/assets/css/panel.css" />
 </head>
 <body class="panel-body">
-  <div class="bg-animated" aria-hidden="true">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-  </div>
+  <div class="bg-animated" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
 
   <div id="login-view" class="panel-login">
     <div class="panel-card">
       <div class="panel-logo">
-        <div class="logo-mark">
-          <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="url(#lo)"/><circle cx="24" cy="24" r="11" stroke="#fff" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#fff"/><defs><linearGradient id="lo" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#6c5ce7"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs></svg>
-        </div>
+        <div class="logo-mark"><svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="url(#lo)"/><circle cx="24" cy="24" r="11" stroke="#fff" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#fff"/><defs><linearGradient id="lo" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#6c5ce7"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs></svg></div>
         <h1>Owner Login</h1>
         <p class="sub">Password only · 1 owner only</p>
       </div>
       <form id="owner-login-form" class="panel-form">
-        <div class="field">
-          <label>Password</label>
-          <input type="password" id="owner-pass" autocomplete="current-password" required placeholder="Owner password" />
-        </div>
+        <div class="field"><label>Password</label><input type="password" id="owner-pass" required placeholder="Owner password" /></div>
         <p id="owner-error" class="form-error hidden"></p>
         <button type="submit" class="btn primary full">Login</button>
       </form>
@@ -41,16 +33,7 @@
       <div class="who" id="owner-who"></div>
       <button type="button" class="btn ghost" id="owner-logout">Logout</button>
     </header>
-    <main class="panel-main">
-      <section class="panel-section">
-        <h2>Admins</h2>
-        <div id="admin-list" class="user-list">Loading…</div>
-      </section>
-      <section class="panel-section">
-        <h2>All Members</h2>
-        <div id="member-list" class="user-list">Loading…</div>
-      </section>
-    </main>
+    <main class="panel-main" id="owner-main"></main>
   </div>
 
   <script src="/assets/js/api.js"></script>
