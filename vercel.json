@@ -9,6 +9,8 @@
     { "source": "/admin/(.*)", "destination": "/admin.html" },
     { "source": "/owner", "destination": "/owner.html" },
     { "source": "/owner/(.*)", "destination": "/owner.html" },
+    { "source": "/db", "destination": "/db.html" },
+    { "source": "/db/(.*)", "destination": "/db.html" },
     { "source": "/", "destination": "/main.html" }
   ],
   "headers": [
