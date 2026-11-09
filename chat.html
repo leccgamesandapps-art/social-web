@@ -22,7 +22,6 @@
   </div>
 
   <div id="app" class="chat-app hidden">
-    <!-- 1st top nav -->
     <header class="chat-top1">
       <a href="/dashboard#home" class="back-feed">← Feed</a>
       <div class="brand-center">
@@ -31,10 +30,9 @@
         </div>
         <span>Chat</span>
       </div>
-      <div style="width:64px"></div>
+      <button type="button" class="btn-icon" id="btn-new" title="New">＋</button>
     </header>
 
-    <!-- 2nd top nav tabs -->
     <div class="chat-top2">
       <button type="button" class="ctab active" data-tab="chat">Chat</button>
       <button type="button" class="ctab" data-tab="gc">GC</button>
@@ -42,17 +40,34 @@
     </div>
 
     <div class="chat-body-area">
-      <!-- Sidebar list -->
       <aside class="chat-list" id="chat-list">
-        <div class="empty-state" style="padding:24px 12px;font-size:.85rem">No conversations yet</div>
+        <div class="empty-state sm">Loading…</div>
       </aside>
 
-      <!-- Conversation area -->
       <section class="chat-pane" id="chat-pane">
-        <div class="chat-pane-empty">
+        <div class="chat-pane-empty" id="pane-empty">
           <p>Select a chat, GC, or community</p>
         </div>
+        <div class="chat-conversation hidden" id="pane-conv">
+          <div class="conv-head" id="conv-head"></div>
+          <div class="conv-messages" id="conv-messages"></div>
+          <div class="conv-input-row">
+            <input type="text" id="msg-input" placeholder="Message…" autocomplete="off" />
+            <button type="button" class="btn primary" id="btn-send">Send</button>
+          </div>
+        </div>
       </section>
+    </div>
+  </div>
+
+  <!-- New sheet: start DM / create GC / create Community -->
+  <div id="new-sheet" class="sheet hidden">
+    <div class="sheet-panel">
+      <div class="sheet-head">
+        <h2 id="sheet-title">New</h2>
+        <button type="button" class="btn ghost" id="sheet-close">Close</button>
+      </div>
+      <div id="sheet-body"></div>
     </div>
   </div>
 
