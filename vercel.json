@@ -1,6 +1,9 @@
 {
   "rewrites": [
-    { "source": "/main", "destination": "/main.html" },
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/main", "destination": "/index.html" },
+    { "source": "/login", "destination": "/index.html" },
+    { "source": "/register", "destination": "/index.html" },
     { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/dashboard/(.*)", "destination": "/dashboard.html" },
     { "source": "/chat", "destination": "/chat.html" },
@@ -9,9 +12,7 @@
     { "source": "/admin/(.*)", "destination": "/admin.html" },
     { "source": "/owner", "destination": "/owner.html" },
     { "source": "/owner/(.*)", "destination": "/owner.html" },
-    { "source": "/db", "destination": "/db.html" },
-    { "source": "/db/(.*)", "destination": "/db.html" },
-    { "source": "/", "destination": "/main.html" }
+    { "source": "/db", "destination": "/db.html" }
   ],
   "headers": [
     {
@@ -22,7 +23,7 @@
         { "key": "X-XSS-Protection", "value": "1; mode=block" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" },
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate" }
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
       ]
     }
   ]
