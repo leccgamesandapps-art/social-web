@@ -4,57 +4,59 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0b0d14" />
   <title>Social Web · Chat</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <link rel="stylesheet" href="/water.css" />
-  <link rel="stylesheet" href="/chat-layout.css" />
-  <script src="/public-config.js"></script>
+  <link rel="stylesheet" href="/assets/css/core.css" />
+  <link rel="stylesheet" href="/assets/css/chat.css" />
 </head>
-<body class="chat-page water-bg">
-  <div class="water-layer" aria-hidden="true"></div>
-  <div id="guard" class="loader-screen"><div class="spinner"></div><p>Checking session...</p></div>
-  <div id="sw-modal-root"></div>
-  <div id="app" class="chat-shell hidden">
+<body class="chat-body">
+  <div class="bg-animated" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div id="guard" class="loader-screen">
+    <div class="spinner"></div>
+    <p>Checking session…</p>
+  </div>
+
+  <div id="app" class="chat-app hidden">
+    <!-- 1st top nav -->
     <header class="chat-top1">
-      <a href="/dashboard#home" class="feed-btn">← Feed</a>
-      <div class="chat-brand">
-        <svg viewBox="0 0 48 48" width="28" height="28" fill="none"><rect width="48" height="48" rx="12" fill="url(#cg)"/><circle cx="24" cy="24" r="10" stroke="white" stroke-width="3"/><circle cx="24" cy="24" r="4" fill="white"/><defs><linearGradient id="cg" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#5b8cff"/><stop offset="1" stop-color="#8b7cff"/></linearGradient></defs></svg>
+      <a href="/dashboard#home" class="back-feed">← Feed</a>
+      <div class="brand-center">
+        <div class="logo-mark xs">
+          <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="url(#lc)"/><circle cx="24" cy="24" r="11" stroke="#fff" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#fff"/><defs><linearGradient id="lc" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#6c5ce7"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs></svg>
+        </div>
         <span>Chat</span>
       </div>
-      <span class="feed-btn spacer"></span>
+      <div style="width:64px"></div>
     </header>
-    <nav class="chat-tabs" id="chat-tabs">
-      <button type="button" class="chat-tab active" data-tab="chat">Chat</button>
-      <button type="button" class="chat-tab" data-tab="gc">GC</button>
-      <button type="button" class="chat-tab" data-tab="community">Community</button>
-    </nav>
-    <div class="chat-body">
-      <aside class="chat-list-pane">
-        <div class="chat-list-head">
-          <span id="list-title">Chats</span>
-          <button type="button" class="btn small" id="list-add-btn">+</button>
-        </div>
-        <div class="chat-list" id="chat-list"></div>
+
+    <!-- 2nd top nav tabs -->
+    <div class="chat-top2">
+      <button type="button" class="ctab active" data-tab="chat">Chat</button>
+      <button type="button" class="ctab" data-tab="gc">GC</button>
+      <button type="button" class="ctab" data-tab="community">Community</button>
+    </div>
+
+    <div class="chat-body-area">
+      <!-- Sidebar list -->
+      <aside class="chat-list" id="chat-list">
+        <div class="empty-state" style="padding:24px 12px;font-size:.85rem">No conversations yet</div>
       </aside>
-      <main class="chat-panel-pane">
-        <div class="chat-panel-head" id="panel-title">Select a conversation</div>
-        <div class="chat-panel-messages" id="panel-messages">
-          <div class="empty"><p>Choose a chat from the list</p></div>
+
+      <!-- Conversation area -->
+      <section class="chat-pane" id="chat-pane">
+        <div class="chat-pane-empty">
+          <p>Select a chat, GC, or community</p>
         </div>
-        <div class="chat-panel-compose" id="panel-compose">
-          <input id="panel-input" placeholder="Message…" disabled />
-          <button type="button" class="btn primary" id="panel-send" disabled>Send</button>
-        </div>
-      </main>
+      </section>
     </div>
   </div>
-  <script src="/db.js"></script>
-  <script src="/admin-db.js"></script>
-  <script src="/db-secure.js"></script>
-  <script src="/db-roles.js"></script>
-  <script src="/chat-auth.js"></script>
-  <script src="/chat-ui.js"></script>
-  <script src="/community-settings-ui.js"></script>
-  <script src="/chat-invite.js"></script>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/chat.js"></script>
 </body>
 </html>
