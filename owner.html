@@ -4,23 +4,72 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0b0d14" />
   <title>Social Web · Owner</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <link rel="stylesheet" href="/admin-panel.css" />
-  <script src="/public-config.js"></script>
+  <link rel="stylesheet" href="/assets/css/core.css" />
+  <link rel="stylesheet" href="/assets/css/panel.css" />
 </head>
-<body class="admin-page owner-page">
-  <div id="app" class="admin-shell">
-    <header class="admin-top">
-      <span class="admin-brand">Owner Panel</span>
-      <span class="admin-pub" id="pub-key-label"></span>
-      <button type="button" class="btn small" id="owner-logout" style="display:none">Logout</button>
-    </header>
-    <main id="owner-main"></main>
+<body class="panel-body">
+  <div class="bg-animated" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
   </div>
-  <script src="/db.js"></script>
-  <script src="/admin-db.js"></script>
-  <script src="/db-secure.js"></script>
-  <script src="/owner-app.js"></script>
+
+  <!-- LOGIN -->
+  <div id="login-view" class="panel-login">
+    <div class="panel-card">
+      <div class="panel-logo">
+        <div class="logo-mark">
+          <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="url(#lo)"/><circle cx="24" cy="24" r="11" stroke="#fff" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#fff"/><defs><linearGradient id="lo" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#6c5ce7"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs></svg>
+        </div>
+        <h1>Owner Login</h1>
+        <p class="sub">Only the single owner account</p>
+      </div>
+      <form id="owner-login-form" class="panel-form">
+        <div class="field">
+          <label>Username</label>
+          <input type="text" id="owner-user" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="owner-pass" autocomplete="current-password" required />
+        </div>
+        <p id="owner-error" class="form-error hidden"></p>
+        <button type="submit" class="btn primary full">Login as Owner</button>
+      </form>
+      <p class="panel-hint">Use the same password you registered with. Account must have role = 1.</p>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dash-view" class="panel-dash hidden">
+    <header class="panel-top">
+      <div class="brand">Owner Panel</div>
+      <div class="who" id="owner-who"></div>
+      <button type="button" class="btn ghost" id="owner-logout">Logout</button>
+    </header>
+    <main class="panel-main">
+      <section class="panel-section">
+        <h2>Add Admin</h2>
+        <form id="add-admin-form" class="inline-form">
+          <input type="text" id="new-admin-user" placeholder="username" required />
+          <input type="password" id="new-admin-pass" placeholder="password" required />
+          <button type="submit" class="btn primary">Create Admin</button>
+        </form>
+        <p id="add-admin-msg" class="form-error hidden"></p>
+      </section>
+      <section class="panel-section">
+        <h2>Admins</h2>
+        <div id="admin-list" class="user-list">Loading…</div>
+      </section>
+      <section class="panel-section">
+        <h2>All Members</h2>
+        <div id="member-list" class="user-list">Loading…</div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/owner.js"></script>
 </body>
 </html>

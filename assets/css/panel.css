@@ -1,0 +1,72 @@
+.panel-body { min-height: 100dvh; position: relative; }
+
+.panel-login {
+  position: relative; z-index: 1;
+  min-height: 100dvh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px 16px;
+}
+.panel-card {
+  width: 100%; max-width: 400px;
+  background: rgba(18,22,34,.85);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 22px;
+  backdrop-filter: blur(16px);
+}
+.panel-logo { text-align: center; margin-bottom: 22px; }
+.panel-logo .logo-mark { width: 52px; height: 52px; margin: 0 auto 12px; }
+.panel-logo h1 { margin: 0; font-size: 1.35rem; font-weight: 800; }
+.panel-logo .sub { margin: 6px 0 0; color: var(--text-muted); font-size: .85rem; }
+.panel-form .field { margin-bottom: 12px; }
+.panel-form label { display: block; font-size: .8rem; color: var(--text-muted); margin-bottom: 4px; }
+.panel-form input {
+  width: 100%; background: #0a0c12; color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px; outline: none;
+}
+.panel-hint { margin-top: 14px; font-size: .75rem; color: var(--text-muted); text-align: center; }
+.form-error { color: #ff6b6b; font-size: .85rem; margin: 8px 0; }
+.form-error.hidden { display: none; }
+
+.panel-dash { position: relative; z-index: 1; min-height: 100dvh; }
+.panel-top {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: rgba(11,13,20,.88);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+}
+.panel-top .brand { font-weight: 800; flex: 1; }
+.panel-top .who { font-size: .8rem; color: var(--text-muted); }
+.panel-main { padding: 16px; max-width: 720px; margin: 0 auto; }
+.panel-section { margin-bottom: 28px; }
+.panel-section h2 { margin: 0 0 12px; font-size: 1.05rem; }
+
+.inline-form {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;
+}
+.inline-form input {
+  flex: 1; min-width: 120px;
+  background: #0a0c12; color: var(--text);
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 12px; outline: none;
+}
+
+.user-list { display: flex; flex-direction: column; gap: 8px; }
+.user-row {
+  background: rgba(18,22,34,.75);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+}
+.user-row .name { font-weight: 700; }
+.user-row .meta { font-size: .8rem; color: var(--text-muted); }
+.user-row .role-badge {
+  font-size: .7rem; font-weight: 700;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(108,92,231,.25); color: #c4b5fd;
+}
+.user-row .role-badge.owner { background: rgba(250,204,21,.2); color: #fde047; }
+.user-row .role-badge.admin { background: rgba(52,211,153,.2); color: #6ee7b7; }
