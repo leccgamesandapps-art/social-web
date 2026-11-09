@@ -2,7 +2,9 @@ window.SW_PUBLIC = {
   appName: 'Social Web',
   publicKey: 'sw_pub_le_social_web_v1',
   version: '1.0.0',
-  moderationEnabled: true
+  moderationEnabled: true,
+  secureSubpacks: true,
+  secureVersion: 'v1'
 };
 try {
   var m = document.createElement('meta');
