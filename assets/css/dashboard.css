@@ -54,6 +54,20 @@
 }
 .empty-icon { font-size: 2rem; margin-bottom: 8px; }
 
+.post-card {
+  background: rgba(18,22,34,.75);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.post-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; gap: 10px;
+}
+.post-meta .time { color: var(--text-muted); font-size: .75rem; }
+.post-body { white-space: pre-wrap; line-height: 1.45; }
+.post-actions { margin-top: 10px; font-size: .8rem; }
+
 .create-card, .settings-card, .profile-card {
   background: rgba(18,22,34,.75);
   border: 1px solid var(--border);
@@ -67,6 +81,18 @@
   border: 1px solid var(--border); border-radius: var(--radius-sm);
   padding: 12px; margin-bottom: 12px; outline: none;
 }
+
+.profile-row { display: flex; gap: 14px; align-items: center; }
+.avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(135deg, #6c5ce7, #a78bfa);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 1.2rem; flex-shrink: 0;
+}
+.profile-row .name { font-weight: 750; font-size: 1.1rem; }
+.profile-row .handle { color: var(--text-muted); font-size: .85rem; }
+.bio { margin: 14px 0 0; color: var(--text-muted); }
+.profile-actions { margin-top: 14px; }
 
 .search-box { margin-bottom: 14px; }
 .search-box input {

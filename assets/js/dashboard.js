@@ -6,16 +6,16 @@
 
   function parseHash() {
     const raw = (location.hash || '#home').replace(/^#/, '').trim();
-    if (!raw) return { view: 'home', params: {} };
+    if (!raw) return { view: 'home', params: {}, raw: 'home' };
 
-    // Patterns: home | profile | profile=edit | friends | friends=requests |
+    // Supports: home | profile | profile=edit | friends | friends=requests |
     // notifications | notifications=activity | user=username | search |
-    // create | post=id | settings | share=p!_id | etc.
-    const parts = raw.split('=');
-    const view = parts[0] || 'home';
-    const params = {};
-    if (parts.length > 1) params.arg = parts.slice(1).join('=');
-    return { view, params, raw };
+    // create | post=id | settings | share=p!_id | community=id | etc.
+    const eq = raw.indexOf('=');
+    if (eq === -1) return { view: raw, params: {}, raw };
+    const view = raw.slice(0, eq);
+    const arg = raw.slice(eq + 1);
+    return { view, params: { arg }, raw };
   }
 
   function showView(name) {
@@ -24,41 +24,59 @@
     });
     document.querySelectorAll('.bottom-nav .nav-item').forEach(n => {
       const nav = n.dataset.nav;
-      n.classList.toggle('active', nav === name || (name === 'home' && nav === 'home'));
+      const active =
+        nav === name ||
+        (name === 'home' && nav === 'home') ||
+        (name === 'profile-edit' && nav === 'menu') ||
+        (['friends', 'notifications', 'settings', 'profile'].includes(name) && nav === 'menu');
+      n.classList.toggle('active', !!active && nav !== 'chat');
     });
   }
 
   function route() {
     const { view, params, raw } = parseHash();
-    const known = new Set([
-      'home', 'search', 'create', 'profile', 'profile-edit', 'friends',
-      'notifications', 'settings', 'user', 'post', 'error'
-    ]);
 
-    // Map profile=edit → profile-edit
+    // profile=edit
     if (view === 'profile' && params.arg === 'edit') {
       showView('profile-edit');
       loadProfileEdit();
       return;
     }
+    // friends=requests | friends=pending | friends=list
+    if (view === 'friends') {
+      showView('friends');
+      setSubtab('friends', params.arg || 'list');
+      return;
+    }
+    // notifications=activity | notifications=system
+    if (view === 'notifications') {
+      showView('notifications');
+      setSubtab('notifications', params.arg || 'all');
+      return;
+    }
+    // user=username
     if (view === 'user' && params.arg) {
       showView('user');
       loadUser(params.arg);
       return;
     }
+    // post=id
     if (view === 'post' && params.arg) {
       showView('post');
       loadPost(params.arg);
       return;
     }
-    if (view === 'friends') {
-      showView('friends');
+    // share=p!_xxx etc — placeholder for now
+    if (view === 'share') {
+      showView('home');
       return;
     }
-    if (view === 'notifications') {
-      showView('notifications');
-      return;
-    }
+
+    const known = new Set([
+      'home', 'search', 'create', 'profile', 'profile-edit', 'friends',
+      'notifications', 'settings', 'user', 'post', 'error'
+    ]);
+
     if (known.has(view)) {
       showView(view);
       if (view === 'profile') loadProfile();
@@ -67,6 +85,21 @@
       return;
     }
     showView('error');
+  }
+
+  function setSubtab(section, which) {
+    const map = {
+      friends: { list: 'list', requests: 'requests', pending: 'pending', all: 'list' },
+      notifications: { all: 'all', activity: 'activity', system: 'system' }
+    };
+    const target = (map[section] && map[section][which]) || which || Object.values(map[section] || {})[0];
+    const root = section === 'friends'
+      ? document.querySelector('[data-view="friends"]')
+      : document.querySelector('[data-view="notifications"]');
+    if (!root) return;
+    root.querySelectorAll('.subtab').forEach(t => {
+      t.classList.toggle('active', t.dataset.sub === target);
+    });
   }
 
   async function loadFeed() {
@@ -85,14 +118,17 @@
   }
 
   function postCard(p) {
-    const content = String(p.content || '').replace(/</g, '&lt;');
-    return `<article class="post-card" style="background:rgba(18,22,34,.75);border:1px solid var(--border);border-radius:14px;padding:14px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-        <strong>@${p.author || '?'}</strong>
-        <span style="color:var(--text-muted);font-size:.75rem">${p.created_at ? new Date(p.created_at).toLocaleString() : ''}</span>
+    const content = esc(p.content || '');
+    const when = p.createdAt || p.created_at || '';
+    return `<article class="post-card">
+      <div class="post-meta">
+        <a href="#user=${esc(p.author)}"><strong>@${esc(p.author || '?')}</strong></a>
+        <span class="time">${when ? new Date(when).toLocaleString() : ''}</span>
       </div>
-      <div style="white-space:pre-wrap;line-height:1.45">${content}</div>
-      <div style="margin-top:10px"><a href="#post=${p.id}" style="font-size:.8rem">View</a></div>
+      <div class="post-body">${content}</div>
+      <div class="post-actions">
+        <a href="#post=${esc(p.id)}">View</a>
+      </div>
     </article>`;
   }
 
@@ -100,17 +136,15 @@
     const card = document.getElementById('profile-card');
     if (!currentUser) return;
     card.innerHTML = `
-      <div style="display:flex;gap:14px;align-items:center">
-        <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#6c5ce7,#a78bfa);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.2rem">
-          ${(currentUser.displayName || currentUser.username || 'U').charAt(0).toUpperCase()}
-        </div>
+      <div class="profile-row">
+        <div class="avatar">${(currentUser.displayName || currentUser.username || 'U').charAt(0).toUpperCase()}</div>
         <div>
-          <div style="font-weight:750;font-size:1.1rem">${esc(currentUser.displayName || currentUser.username)}</div>
-          <div style="color:var(--text-muted);font-size:.85rem">@${esc(currentUser.username)} · ${esc(currentUser.roleLabel || 'user')}</div>
+          <div class="name">${esc(currentUser.displayName || currentUser.username)}</div>
+          <div class="handle">@${esc(currentUser.username)} · ${esc(currentUser.roleLabel || 'user')}</div>
         </div>
       </div>
-      <p style="margin:14px 0 0;color:var(--text-muted)">${esc(currentUser.bio || 'No bio yet')}</p>
-      <div style="margin-top:14px">
+      <p class="bio">${esc(currentUser.bio || 'No bio yet')}</p>
+      <div class="profile-actions">
         <a href="#profile=edit" class="btn ghost">Edit profile</a>
       </div>`;
   }
@@ -129,16 +163,60 @@
   function loadUser(username) {
     document.getElementById('user-title').textContent = '@' + username;
     document.getElementById('user-card').innerHTML =
-      `<div class="empty-state">Loading @${esc(username)}…</div>`;
+      `<div class="empty-state">Profile for @${esc(username)} coming next</div>`;
   }
 
   function loadPost(id) {
     document.getElementById('single-post').innerHTML =
-      `<div class="empty-state">Loading post…</div>`;
+      `<div class="empty-state">Loading post ${esc(id)}…</div>`;
+    // Will expand with full post + comments
   }
 
   function esc(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Create Post ─────────────────────────────────────────────
+  const btnPost = document.getElementById('btn-post');
+  if (btnPost) {
+    btnPost.addEventListener('click', async () => {
+      const ta = document.getElementById('post-content');
+      const content = (ta.value || '').trim();
+      if (!content) {
+        alert('Write something first');
+        return;
+      }
+      btnPost.disabled = true;
+      btnPost.textContent = 'Posting…';
+      try {
+        const r = await SW.api('/api/posts', { method: 'POST', body: { content } });
+        if (!r.ok) {
+          alert(r.error || 'Failed to post');
+          btnPost.disabled = false;
+          btnPost.textContent = 'Post';
+          return;
+        }
+        ta.value = '';
+        btnPost.disabled = false;
+        btnPost.textContent = 'Post';
+        location.hash = 'home';
+        loadFeed();
+      } catch (e) {
+        alert(e.message || 'Network error');
+        btnPost.disabled = false;
+        btnPost.textContent = 'Post';
+      }
+    });
+  }
+
+  // ── Profile save (local for now until profile API exists) ───
+  const btnSaveProfile = document.getElementById('btn-save-profile');
+  if (btnSaveProfile) {
+    btnSaveProfile.addEventListener('click', () => {
+      // Placeholder — will wire to API next
+      alert('Profile save API coming next. Display name & bio will sync to Supabase.');
+      location.hash = 'profile';
+    });
   }
 
   // Menu
@@ -155,6 +233,20 @@
     btn.addEventListener('click', () => {
       menuOverlay.classList.add('hidden');
       location.hash = btn.dataset.goto;
+    });
+  });
+
+  // Subtabs click → update hash
+  document.querySelectorAll('[data-view="friends"] .subtab').forEach(t => {
+    t.addEventListener('click', () => {
+      const sub = t.dataset.sub;
+      location.hash = sub === 'list' ? 'friends' : 'friends=' + sub;
+    });
+  });
+  document.querySelectorAll('[data-view="notifications"] .subtab').forEach(t => {
+    t.addEventListener('click', () => {
+      const sub = t.dataset.sub;
+      location.hash = sub === 'all' ? 'notifications' : 'notifications=' + sub;
     });
   });
 
