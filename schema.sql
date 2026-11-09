@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
+  id BIGSERIAL PRIMARY KEY,
   username VARCHAR(32) UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   display_name VARCHAR(64) NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS friendships (
   PRIMARY KEY (user_a, user_b)
 );
 CREATE TABLE IF NOT EXISTS moderation_logs (
-  id SERIAL PRIMARY KEY,
+  id BIGSERIAL PRIMARY KEY,
   username VARCHAR(32) NOT NULL,
   action VARCHAR(40) NOT NULL,
   by_role VARCHAR(20),

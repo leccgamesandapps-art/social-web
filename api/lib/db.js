@@ -1,35 +1,37 @@
-const { sql, db } = require('@vercel/postgres');
-function hasDatabase() {
+const { hasSupabase, adminClient } = require('./supabase');
+let pg = null;
+try { pg = require('@vercel/postgres'); } catch (e) { pg = null; }
+function hasPostgres() {
   return !!(process.env.POSTGRES_URL || process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING);
 }
-async function query(strings, ...values) {
-  if (!hasDatabase()) {
-    const err = new Error('DATABASE_NOT_CONFIGURED');
-    err.code = 'DATABASE_NOT_CONFIGURED';
-    throw err;
-  }
-  return sql(strings, ...values);
-}
-async function rawQuery(text, params) {
-  if (!hasDatabase()) {
-    const err = new Error('DATABASE_NOT_CONFIGURED');
-    err.code = 'DATABASE_NOT_CONFIGURED';
-    throw err;
-  }
-  if (params && params.length) return db.query(text, params);
-  return db.query(text);
+function hasDatabase() { return hasSupabase() || hasPostgres(); }
+function dbMode() {
+  if (hasSupabase()) return 'supabase';
+  if (hasPostgres()) return 'postgres';
+  return 'none';
 }
 async function ensureSchema() {
-  await query`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username VARCHAR(32) UNIQUE NOT NULL, password_hash TEXT NOT NULL, display_name VARCHAR(64) NOT NULL, bio TEXT DEFAULT '', status VARCHAR(20) DEFAULT 'active', status_until TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`;
-  await query`CREATE TABLE IF NOT EXISTS posts (id VARCHAR(32) PRIMARY KEY, author VARCHAR(32) NOT NULL REFERENCES users(username) ON DELETE CASCADE, content TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`;
-  await query`CREATE TABLE IF NOT EXISTS post_likes (post_id VARCHAR(32) REFERENCES posts(id) ON DELETE CASCADE, username VARCHAR(32) REFERENCES users(username) ON DELETE CASCADE, PRIMARY KEY (post_id, username))`;
-  await query`CREATE TABLE IF NOT EXISTS comments (id VARCHAR(32) PRIMARY KEY, post_id VARCHAR(32) REFERENCES posts(id) ON DELETE CASCADE, author VARCHAR(32) REFERENCES users(username) ON DELETE CASCADE, content TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())`;
-  await query`CREATE TABLE IF NOT EXISTS friendships (user_a VARCHAR(32) REFERENCES users(username) ON DELETE CASCADE, user_b VARCHAR(32) REFERENCES users(username) ON DELETE CASCADE, status VARCHAR(20) NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (user_a, user_b))`;
-  await query`CREATE TABLE IF NOT EXISTS moderation_logs (id SERIAL PRIMARY KEY, username VARCHAR(32) NOT NULL, action VARCHAR(40) NOT NULL, by_role VARCHAR(20), by_name VARCHAR(64), note TEXT, created_at TIMESTAMPTZ DEFAULT NOW())`;
-  return { ok: true };
+  if (hasSupabase()) {
+    const sb = adminClient();
+    const { error } = await sb.from('users').select('username').limit(1);
+    if (error && /relation|does not exist|schema cache/i.test(error.message)) {
+      const err = new Error('Tables missing. Open Supabase → SQL Editor and run schema.sql');
+      err.code = 'SCHEMA_MISSING';
+      throw err;
+    }
+    if (error) throw error;
+    return { ok: true, mode: 'supabase' };
+  }
+  const err = new Error('DATABASE_NOT_CONFIGURED');
+  err.code = 'DATABASE_NOT_CONFIGURED';
+  throw err;
 }
 async function listTables() {
-  const r = await rawQuery(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name`);
-  return r.rows.map((x) => x.table_name);
+  return ['users', 'posts', 'post_likes', 'comments', 'friendships', 'moderation_logs'];
 }
-module.exports = { sql: query, rawQuery, hasDatabase, ensureSchema, listTables };
+async function rawQuery() {
+  const err = new Error('For full SQL use Supabase SQL Editor, or set DATABASE_URL');
+  err.code = 'RAW_SQL_UNAVAILABLE';
+  throw err;
+}
+module.exports = { hasDatabase, hasSupabase, hasPostgres, dbMode, adminClient, ensureSchema, listTables, rawQuery, sql: null };
