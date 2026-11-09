@@ -1,4 +1,4 @@
-const { hasDatabase, rawQuery, ensureSchema, listTables } = require('../lib/db');
+const { hasDatabase, dbMode, adminClient, listTables, hasSupabase, ensureSchema } = require('../lib/db');
 const { json, readBody } = require('../lib/crypto');
 function authorize(req, body) {
   const secret = process.env.SW_SECRET_KEY || '';
@@ -7,43 +7,38 @@ function authorize(req, body) {
 }
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { ok: false, error: 'POST only' });
-  if (!hasDatabase()) {
-    return json(res, 503, { ok: false, error: 'DATABASE_NOT_CONFIGURED', help: 'Connect Vercel Postgres to le-social-web and redeploy.' });
-  }
+  if (!hasDatabase()) return json(res, 503, { ok: false, error: 'DATABASE_NOT_CONFIGURED' });
   try {
     const body = await readBody(req);
-    if (!authorize(req, body)) {
-      return json(res, 401, { ok: false, error: 'Unauthorized — enter SW_SECRET_KEY to run SQL' });
-    }
+    if (!authorize(req, body)) return json(res, 401, { ok: false, error: 'Unauthorized — enter SW_SECRET_KEY' });
     const action = body.action || 'sql';
-    if (action === 'tables') {
-      await ensureSchema();
-      return json(res, 200, { ok: true, tables: await listTables() });
-    }
-    if (action === 'describe') {
-      const table = String(body.table || '').replace(/[^a-z0-9_]/gi, '');
-      if (!table) return json(res, 400, { ok: false, error: 'table required' });
-      const r = await rawQuery(`SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position`, [table]);
-      return json(res, 200, { ok: true, columns: r.rows });
-    }
-    if (action === 'setup') {
-      await ensureSchema();
-      return json(res, 200, { ok: true, message: 'Schema ready', tables: await listTables() });
+    if (action === 'tables' || action === 'setup') {
+      try { await ensureSchema(); } catch (e) {
+        if (e.code === 'SCHEMA_MISSING') return json(res, 200, { ok: false, error: e.message, tables: [], needSchema: true });
+        throw e;
+      }
+      return json(res, 200, { ok: true, message: 'OK', tables: await listTables(), mode: dbMode() });
     }
     const sqlText = String(body.sql || '').trim();
     if (!sqlText) return json(res, 400, { ok: false, error: 'Empty SQL' });
-    if (sqlText.length > 20000) return json(res, 400, { ok: false, error: 'SQL too long' });
-    const start = Date.now();
-    const result = await rawQuery(sqlText);
-    return json(res, 200, {
-      ok: true,
-      command: result.command || null,
-      rowCount: result.rowCount,
-      fields: (result.fields || []).map((f) => f.name),
-      rows: result.rows || [],
-      durationMs: Date.now() - start
-    });
+    const m = sqlText.match(/^select\s+([\w\s,*]+)\s+from\s+([a-z0-9_]+)([\s\S]*)$/i);
+    if (m && hasSupabase()) {
+      const cols = m[1].trim();
+      const table = m[2];
+      let limit = 100;
+      const lim = (m[3] || '').match(/limit\s+(\d+)/i);
+      if (lim) limit = parseInt(lim[1], 10);
+      const sb = adminClient();
+      const start = Date.now();
+      const selectCols = cols === '*' ? '*' : cols;
+      const { data, error } = await sb.from(table).select(selectCols).limit(limit);
+      if (error) return json(res, 400, { ok: false, error: error.message });
+      const rows = data || [];
+      const fields = rows.length ? Object.keys(rows[0]) : [];
+      return json(res, 200, { ok: true, command: 'SELECT', rowCount: rows.length, fields, rows, durationMs: Date.now() - start, mode: 'supabase' });
+    }
+    return json(res, 400, { ok: false, error: 'For complex SQL use Supabase SQL Editor', help: 'https://supabase.com/dashboard → SQL' });
   } catch (e) {
-    return json(res, 400, { ok: false, error: e.message || 'SQL error', code: e.code || null });
+    return json(res, 400, { ok: false, error: e.message || 'query failed', code: e.code || null });
   }
 };

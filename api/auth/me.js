@@ -1,4 +1,4 @@
-const { sql, hasDatabase } = require('../lib/db');
+const { hasDatabase, hasSupabase, adminClient } = require('../lib/db');
 const { verifySession, getCookie, json } = require('../lib/crypto');
 module.exports = async function handler(req, res) {
   if (!hasDatabase()) return json(res, 503, { ok: false, error: 'DATABASE_NOT_CONFIGURED' });
@@ -6,9 +6,11 @@ module.exports = async function handler(req, res) {
   const session = verifySession(token);
   if (!session) return json(res, 401, { ok: false, error: 'Not logged in' });
   try {
-    const result = await sql`SELECT username, display_name, bio, status, created_at FROM users WHERE username = ${session.username}`;
-    if (!result.rows.length) return json(res, 401, { ok: false, error: 'User missing' });
-    const u = result.rows[0];
+    if (!hasSupabase()) return json(res, 503, { ok: false, error: 'No supabase' });
+    const sb = adminClient();
+    const { data: u, error } = await sb.from('users').select('username, display_name, bio, status, created_at').eq('username', session.username).maybeSingle();
+    if (error) return json(res, 500, { ok: false, error: error.message });
+    if (!u) return json(res, 401, { ok: false, error: 'User missing' });
     return json(res, 200, { ok: true, user: { username: u.username, displayName: u.display_name, bio: u.bio, status: u.status, createdAt: u.created_at } });
   } catch (e) {
     return json(res, 500, { ok: false, error: e.message });
