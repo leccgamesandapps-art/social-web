@@ -4,76 +4,178 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0b0d14" />
   <title>Social Web</title>
-  <link rel="stylesheet" href="/styles.css" />
-  <link rel="stylesheet" href="/spaces.css" />
-  <link rel="stylesheet" href="/menu.css" />
-  <link rel="stylesheet" href="/water.css" />
-  <script src="/public-config.js"></script>
+  <link rel="stylesheet" href="/assets/css/core.css" />
+  <link rel="stylesheet" href="/assets/css/dashboard.css" />
 </head>
-<body class="dashboard-water">
-  <div id="guard" class="loader-screen"><div class="spinner"></div><p>Checking session...</p></div>
-  <div id="sw-modal-root"></div>
-  <div id="sw-menu-root"></div>
+<body class="dash-body">
+  <div class="bg-animated" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div id="guard" class="loader-screen">
+    <div class="logo-mark">
+      <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="url(#lgd)"/><circle cx="24" cy="24" r="11" stroke="#fff" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#fff"/><defs><linearGradient id="lgd" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#6c5ce7"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs></svg>
+    </div>
+    <div class="spinner"></div>
+    <p>Checking session…</p>
+  </div>
+
   <div id="app" class="app hidden">
-    <aside class="sidebar">
-      <div class="logo">
-        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="12" fill="url(#g)"/><circle cx="24" cy="24" r="10" stroke="white" stroke-width="3"/><circle cx="24" cy="24" r="4" fill="white"/><defs><linearGradient id="g" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#8b7cff"/><stop offset="1" stop-color="#6c5ce7"/></linearGradient></defs></svg>
-        Social Web
-      </div>
-      <nav id="side-nav">
-        <a href="#home" data-view="home" class="nav-item active"><span class="icon">🏠</span> Home</a>
-        <a href="#search" data-view="search" class="nav-item"><span class="icon">🔍</span> Search</a>
-        <a href="#create" data-view="create" class="nav-item"><span class="icon">✏️</span> Create</a>
-        <a href="/chat" class="nav-item"><span class="icon">💬</span> Chat</a>
-        <a href="#profile" data-view="profile" class="nav-item"><span class="icon">👤</span> Profile</a>
-        <a href="#friends" data-view="friends" class="nav-item"><span class="icon">👥</span> Friends</a>
-        <a href="#notifications" data-view="notifications" class="nav-item"><span class="icon">🔔</span> Alerts</a>
-        <a href="#settings" data-view="settings" class="nav-item"><span class="icon">⚙️</span> Settings</a>
-      </nav>
-      <div class="user-mini">
-        <div class="user-mini-info"><div class="avatar" id="sidebar-avatar">U</div><span id="mini-name">User</span></div>
-      </div>
-    </aside>
-    <div class="main-wrap">
-      <header class="mobile-header">
-        <div class="logo logo-center">
-          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="48" height="48" rx="12" fill="url(#gm)"/><circle cx="24" cy="24" r="10" stroke="white" stroke-width="3"/><circle cx="24" cy="24" r="4" fill="white"/><defs><linearGradient id="gm" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#8b7cff"/><stop offset="1" stop-color="#6c5ce7"/></linearGradient></defs></svg>
-          Social Web
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand-center">
+          <div class="logo-mark xs">
+            <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="url(#lgx)"/><circle cx="24" cy="24" r="11" stroke="#fff" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#fff"/><defs><linearGradient id="lgx" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#6c5ce7"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs></svg>
+          </div>
+          <span>Social Web</span>
         </div>
-      </header>
-      <main class="main-content">
-        <section id="view-home" class="view active"><div class="view-header"><h2>Feed</h2></div><div id="feed" class="feed"></div></section>
-        <section id="view-create" class="view"><div class="view-header"><h2>Create Post</h2></div><div class="create-box"><textarea id="post-content" placeholder="What's on your mind?" rows="5"></textarea><div id="link-preview-box" class="link-preview hidden"></div><div id="attach-preview" class="attach-preview"></div><div class="create-toolbar"><label class="btn small attach-label">📎 Attach<input type="file" id="post-files" multiple accept="*/*" hidden /></label><span id="attach-count" class="meta"></span><button id="post-submit" class="btn primary">Post</button></div></div></section>
-        <section id="view-search" class="view"><div class="view-header"><h2>Search</h2></div><div class="search-section"><input type="search" id="search-input" placeholder="Search…" /><div id="search-results" class="list"></div></div></section>
-        <section id="view-profile" class="view"><div id="profile-header"></div><div id="profile-posts" class="feed"></div></section>
-        <section id="view-profile-edit" class="view"><div class="view-header"><h2>Edit Profile</h2></div><div class="settings-group"><label>Display name</label><input id="edit-displayname" type="text" /><label>Bio</label><textarea id="edit-bio" rows="3"></textarea><button id="save-profile-edit" class="btn primary">Save</button></div></section>
-        <section id="view-user" class="view"><div id="user-header"></div><div id="user-posts" class="feed"></div></section>
-        <section id="view-friends" class="view"><div class="view-header"><h2>Friends</h2></div><div class="tabs"><button class="tab active" data-ftab="list">All</button><button class="tab" data-ftab="requests">Requests</button><button class="tab" data-ftab="pending">Pending</button></div><div id="friends-panel" class="list" style="margin-top:14px"></div></section>
-        <section id="view-notifications" class="view"><div class="view-header"><h2>Alerts</h2></div><div class="tabs"><button class="tab active" data-ntab="all">All</button><button class="tab" data-ntab="activity">Activity</button><button class="tab" data-ntab="system">System</button></div><div id="notif-list" class="list" style="margin-top:14px"></div></section>
-        <section id="view-settings" class="view"><div class="view-header"><h2>Settings</h2></div><div class="settings-group"><label>Theme (this device only)</label><div class="theme-row"><button type="button" class="btn small theme-btn" data-theme="dark">Dark</button><button type="button" class="btn small theme-btn" data-theme="light">Light</button><button type="button" class="btn small theme-btn" data-theme="purple">Purple</button><button type="button" class="btn small theme-btn" data-theme="oled">OLED</button></div><p class="meta">Theme saved on this phone only.</p></div><div class="settings-group"><label>Account</label><p class="meta" id="settings-account-label">—</p><button id="btn-switch-account" class="btn">Switch account</button><button id="logout-btn-settings" class="btn">Logout</button></div><div class="settings-group"><label>New password</label><input id="set-newpass" type="password" placeholder="Min 6 characters" /><button id="save-pass" class="btn primary">Update password</button></div><div class="settings-group danger"><label>Danger zone</label><button id="btn-delete-account" class="btn danger">Delete account</button><button id="clear-data" class="btn danger">Clear all local data</button></div></section>
-        <section id="view-post" class="view"><button id="back-btn" class="btn small">← Back</button><div id="single-post" style="margin-top:12px"></div><div class="comments-section"><h3>Comments</h3><div id="comments-list"></div><div class="chat-input-row" style="margin-top:12px"><input id="comment-input" placeholder="Write a comment…" /><button id="comment-submit" class="btn primary">Send</button></div></div></section>
-        <section id="view-edit" class="view"><div class="view-header"><h2>Edit Post</h2></div><div class="create-box"><textarea id="edit-content" rows="5"></textarea><div style="display:flex;gap:10px"><button id="edit-save" class="btn primary">Save</button><button id="edit-cancel" class="btn">Cancel</button></div></div></section>
-        <section id="view-error" class="view"><div class="empty"><div class="empty-icon">⚠️</div><p>Page not found</p><button id="error-home-btn" class="btn primary" style="margin-top:16px">Go Home</button></div></section>
-      </main>
-      <nav class="bottom-nav">
-        <a href="#home" data-view="home" class="nav-item active"><span class="icon">🏠</span><span>Home</span></a>
-        <a href="#search" data-view="search" class="nav-item"><span class="icon">🔍</span><span>Search</span></a>
-        <a href="#create" data-view="create" class="nav-item"><span class="icon">✏️</span><span>Create</span></a>
-        <a href="/chat" class="nav-item" id="nav-chat-link"><span class="icon">💬</span><span>Chat</span></a>
-        <a href="#menu" data-view="menu" class="nav-item" id="bottom-menu-btn"><span class="icon">☰</span><span>Menu</span></a>
-      </nav>
+      </div>
+    </header>
+
+    <!-- Main content area (views swap here) -->
+    <main id="main" class="main">
+      <section data-view="home" class="view active">
+        <div class="view-head"><h2>Home</h2></div>
+        <div id="feed" class="feed"><div class="empty-state">Your feed will appear here</div></div>
+      </section>
+
+      <section data-view="search" class="view">
+        <div class="view-head"><h2>Search</h2></div>
+        <div class="search-box">
+          <input type="search" id="search-input" placeholder="Search people or posts…" />
+        </div>
+        <div id="search-results" class="list"></div>
+      </section>
+
+      <section data-view="create" class="view">
+        <div class="view-head"><h2>Create</h2></div>
+        <div class="create-card">
+          <textarea id="post-content" rows="5" placeholder="What's on your mind?"></textarea>
+          <button type="button" class="btn primary full" id="btn-post">Post</button>
+        </div>
+      </section>
+
+      <section data-view="profile" class="view">
+        <div class="view-head"><h2>My Profile</h2></div>
+        <div id="profile-card" class="profile-card"></div>
+        <div id="profile-posts" class="feed"></div>
+      </section>
+
+      <section data-view="profile-edit" class="view">
+        <div class="view-head"><h2>Edit Profile</h2></div>
+        <div class="settings-card">
+          <div class="field"><label>Display name</label><input id="edit-displayname" type="text" maxlength="32" /></div>
+          <div class="field"><label>Bio</label><textarea id="edit-bio" rows="3" maxlength="200"></textarea></div>
+          <button type="button" class="btn primary full" id="btn-save-profile">Save</button>
+        </div>
+      </section>
+
+      <section data-view="friends" class="view">
+        <div class="view-head"><h2>Friends</h2></div>
+        <div class="subtabs">
+          <button type="button" class="subtab active" data-sub="list">All</button>
+          <button type="button" class="subtab" data-sub="requests">Requests</button>
+          <button type="button" class="subtab" data-sub="pending">Pending</button>
+        </div>
+        <div id="friends-list" class="list"></div>
+      </section>
+
+      <section data-view="notifications" class="view">
+        <div class="view-head"><h2>Notifications</h2></div>
+        <div class="subtabs">
+          <button type="button" class="subtab active" data-sub="all">All</button>
+          <button type="button" class="subtab" data-sub="activity">Activity</button>
+          <button type="button" class="subtab" data-sub="system">System</button>
+        </div>
+        <div id="notif-list" class="list"></div>
+      </section>
+
+      <section data-view="settings" class="view">
+        <div class="view-head"><h2>Settings</h2></div>
+        <div class="settings-card">
+          <div class="settings-group">
+            <label class="group-label">Theme (this device only)</label>
+            <div class="theme-row">
+              <button type="button" class="btn ghost theme-btn" data-theme="dark">Dark</button>
+              <button type="button" class="btn ghost theme-btn" data-theme="light">Light</button>
+              <button type="button" class="btn ghost theme-btn" data-theme="purple">Purple</button>
+              <button type="button" class="btn ghost theme-btn" data-theme="oled">OLED</button>
+            </div>
+            <p class="hint">Theme is saved only on this phone. Other devices keep their own theme.</p>
+          </div>
+          <div class="settings-group">
+            <label class="group-label">Account</label>
+            <p class="hint" id="settings-account">—</p>
+            <button type="button" class="btn full" id="btn-switch-account">Switch account</button>
+            <button type="button" class="btn full" id="btn-logout">Logout</button>
+          </div>
+          <div class="settings-group danger">
+            <label class="group-label">Danger zone</label>
+            <button type="button" class="btn danger full" id="btn-delete-account">Delete account</button>
+          </div>
+        </div>
+      </section>
+
+      <section data-view="user" class="view">
+        <div class="view-head"><h2 id="user-title">User</h2></div>
+        <div id="user-card" class="profile-card"></div>
+        <div id="user-posts" class="feed"></div>
+      </section>
+
+      <section data-view="post" class="view">
+        <div class="view-head"><button type="button" class="btn ghost" id="btn-back-post">← Back</button><h2>Post</h2></div>
+        <div id="single-post"></div>
+        <div class="comments-box">
+          <h3>Comments</h3>
+          <div id="comments-list"></div>
+          <div class="comment-input-row">
+            <input id="comment-input" type="text" placeholder="Write a comment…" />
+            <button type="button" class="btn primary" id="btn-comment">Send</button>
+          </div>
+        </div>
+      </section>
+
+      <section data-view="error" class="view">
+        <div class="empty-state">
+          <div class="empty-icon">⚠️</div>
+          <p>Page not found</p>
+          <button type="button" class="btn primary" id="btn-error-home">Go Home</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom navigation -->
+    <nav class="bottom-nav">
+      <a href="#home" class="nav-item active" data-nav="home"><span class="ico">🏠</span><span>Home</span></a>
+      <a href="#search" class="nav-item" data-nav="search"><span class="ico">🔍</span><span>Search</span></a>
+      <a href="#create" class="nav-item" data-nav="create"><span class="ico">✏️</span><span>Create</span></a>
+      <a href="/chat" class="nav-item" data-nav="chat"><span class="ico">💬</span><span>Chat</span></a>
+      <button type="button" class="nav-item" id="btn-menu" data-nav="menu"><span class="ico">☰</span><span>Menu</span></button>
+    </nav>
+  </div>
+
+  <!-- Full-screen Menu popup -->
+  <div id="menu-overlay" class="menu-overlay hidden">
+    <div class="menu-panel">
+      <div class="menu-head">
+        <h2>Menu</h2>
+        <button type="button" class="btn ghost" id="btn-menu-close">Close</button>
+      </div>
+      <div class="menu-list">
+        <button type="button" class="menu-item" data-goto="profile">My profile</button>
+        <button type="button" class="menu-item" data-goto="friends">Friends</button>
+        <button type="button" class="menu-item" data-goto="notifications">Notifications</button>
+        <button type="button" class="menu-item" data-goto="settings">Settings</button>
+      </div>
     </div>
   </div>
-  <script src="/db.js"></script>
-  <script src="/admin-db.js"></script>
-  <script src="/db-secure.js"></script>
-  <script src="/auth.js"></script>
-  <script src="/app.js"></script>
-  <script src="/attachment-fix.js"></script>
-  <script src="/settings-fix.js"></script>
-  <script src="/menu-fix.js"></script>
-  <script src="/dashboard-nav.js"></script>
-  <script src="/error-route.js"></script>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/dashboard.js"></script>
 </body>
 </html>
