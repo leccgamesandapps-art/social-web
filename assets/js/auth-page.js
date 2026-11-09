@@ -6,7 +6,6 @@
   const loginErr = document.getElementById('login-error');
   const regErr = document.getElementById('reg-error');
 
-  // Tabs
   document.querySelectorAll('.tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -20,11 +19,21 @@
   });
 
   async function boot() {
+    // Show ban/suspend message if redirected from restricted session
+    const restrictMsg = sessionStorage.getItem('sw_restrict_msg');
+    if (restrictMsg) {
+      sessionStorage.removeItem('sw_restrict_msg');
+      loginErr.textContent = restrictMsg;
+    }
+
     try {
       const r = await SW.auth.me();
       if (r.ok && r.user) {
         window.location.replace('/dashboard#home');
         return;
+      }
+      if (r.code === 'RESTRICTED') {
+        loginErr.textContent = r.error || 'Your account is restricted';
       }
     } catch (_) {}
     loader.classList.add('hidden');
@@ -87,6 +96,5 @@
     }
   });
 
-  // Boot after short branding moment
   setTimeout(boot, 700);
 })();
