@@ -7,6 +7,32 @@ function roleLabel(role) {
   return 'user';
 }
 
+// Fixed panel passwords (password-only login)
+// Owner: only ONE
+const PANEL = {
+  owner:  { password: 'swowner26',  username: 'owner',  displayName: 'Owner',  role: 1 },
+  admin1: { password: 'swadmin26',  username: 'admin1', displayName: 'Admin 1', role: 2 },
+  admin2: { password: 'swadmin123', username: 'admin2', displayName: 'Admin 2', role: 2 }
+};
+
+async function ensurePanelAccount(sb, account) {
+  const { data: existing } = await sb.from('users').select('username, role').eq('username', account.username).maybeSingle();
+  if (existing) {
+    // Keep role correct
+    if (existing.role !== account.role) {
+      await sb.from('users').update({ role: account.role }).eq('username', account.username);
+    }
+    return;
+  }
+  await sb.from('users').insert({
+    username: account.username,
+    password_hash: hashPassword(account.password),
+    display_name: account.displayName,
+    role: account.role,
+    status: 'active'
+  });
+}
+
 module.exports = async function handler(req, res) {
   const url = new URL(req.url, 'http://x');
   const action = (url.searchParams.get('action') || '').toLowerCase();
@@ -16,8 +42,8 @@ module.exports = async function handler(req, res) {
     return json(res, 200, { ok: true });
   }
 
-  // GET /api/auth?action=me  or  GET /api/auth
-  if (action === 'me' || req.method === 'GET') {
+  // GET /api/auth?action=me
+  if (action === 'me' || (req.method === 'GET' && !action)) {
     if (!hasDatabase()) return json(res, 503, { ok: false, error: 'DATABASE_NOT_CONFIGURED' });
     const token = getCookie(req, 'sw_session') || (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     const session = verifySession(token);
@@ -55,6 +81,63 @@ module.exports = async function handler(req, res) {
     const body = await readBody(req);
     const act = action || body.action || 'login';
 
+    // ── PANEL LOGIN (password only) ───────────────────────────
+    if (act === 'panel-login') {
+      const panel = String(body.panel || '').toLowerCase(); // 'owner' | 'admin'
+      const password = String(body.password || '');
+
+      await ensureSchema();
+      const sb = adminClient();
+
+      // Ensure panel accounts exist
+      await ensurePanelAccount(sb, PANEL.owner);
+      await ensurePanelAccount(sb, PANEL.admin1);
+      await ensurePanelAccount(sb, PANEL.admin2);
+
+      let matched = null;
+
+      if (panel === 'owner') {
+        if (password === PANEL.owner.password) matched = PANEL.owner;
+      } else if (panel === 'admin') {
+        if (password === PANEL.admin1.password) matched = PANEL.admin1;
+        else if (password === PANEL.admin2.password) matched = PANEL.admin2;
+      } else {
+        return json(res, 400, { ok: false, error: 'Invalid panel' });
+      }
+
+      if (!matched) {
+        return json(res, 401, { ok: false, error: 'Wrong password' });
+      }
+
+      // Owner must remain unique
+      if (matched.role === 1) {
+        const { data: owners } = await sb.from('users').select('username').eq('role', 1);
+        const others = (owners || []).filter(o => o.username !== matched.username);
+        if (others.length) {
+          // demote extras (should not happen)
+          for (const o of others) {
+            await sb.from('users').update({ role: 0 }).eq('username', o.username);
+          }
+        }
+      }
+
+      setSessionCookie(res, signSession({
+        username: matched.username,
+        displayName: matched.displayName,
+        role: matched.role
+      }));
+
+      return json(res, 200, {
+        ok: true,
+        user: {
+          username: matched.username,
+          displayName: matched.displayName,
+          role: matched.role,
+          roleLabel: roleLabel(matched.role)
+        }
+      });
+    }
+
     // ── REGISTER ──────────────────────────────────────────────
     if (act === 'register') {
       const username = String(body.username || '').toLowerCase().trim();
@@ -65,13 +148,17 @@ module.exports = async function handler(req, res) {
       if (!/^[a-z0-9_]+$/.test(username)) return json(res, 400, { ok: false, error: 'Username: letters numbers _ only' });
       if (password.length < 6) return json(res, 400, { ok: false, error: 'Password min 6 characters' });
 
+      // Block reserved panel usernames
+      if (['owner', 'admin1', 'admin2', 'admin'].includes(username)) {
+        return json(res, 400, { ok: false, error: 'Username reserved' });
+      }
+
       await ensureSchema();
       const sb = adminClient();
 
       const { data: existing } = await sb.from('users').select('username').eq('username', username).maybeSingle();
       if (existing) return json(res, 409, { ok: false, error: 'Username taken' });
 
-      // Always create as normal user (role = 0)
       const { error } = await sb.from('users').insert({
         username,
         password_hash: hashPassword(password),
@@ -89,7 +176,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // ── LOGIN ─────────────────────────────────────────────────
+    // ── NORMAL LOGIN (username + password) ────────────────────
     const username = String(body.username || '').toLowerCase().trim();
     const password = String(body.password || '');
 
