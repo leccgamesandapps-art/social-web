@@ -6,6 +6,7 @@
   <meta name="robots" content="noindex, nofollow" />
   <title>Social Web</title>
   <link rel="stylesheet" href="/styles.css" />
+  <script src="/public-config.js"></script>
   <script>
     (function(){
       document.addEventListener('contextmenu', e => e.preventDefault());
@@ -14,20 +15,6 @@
           e.preventDefault(); e.stopPropagation();
         }
       });
-      let devtools = {open: false};
-      const threshold = 160;
-      setInterval(() => {
-        const widthDiff = window.outerWidth - window.innerWidth > threshold;
-        const heightDiff = window.outerHeight - window.innerHeight > threshold;
-        if (widthDiff || heightDiff) {
-          if (!devtools.open) {
-            devtools.open = true;
-            document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#fff;font-family:sans-serif;"><h2>Access restricted</h2></div>';
-          }
-        } else {
-          devtools.open = false;
-        }
-      }, 500);
     })();
   </script>
 </head>
@@ -79,6 +66,8 @@
   </div>
 
   <script src="/db.js"></script>
+  <script src="/admin-db.js"></script>
+  <script src="/db-secure.js"></script>
   <script src="/auth.js"></script>
   <script>
     window.addEventListener('load', () => {
