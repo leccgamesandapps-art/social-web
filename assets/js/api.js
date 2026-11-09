@@ -23,15 +23,15 @@ SW.auth = {
     return SW.api('/api/auth?action=me');
   },
   login(username, password) {
-    return SW.api('/api/auth?action=login', {
+    return SW.api('/api/auth', {
       method: 'POST',
-      body: { username, password }
+      body: { action: 'login', username, password }
     });
   },
   register(username, password, displayName) {
-    return SW.api('/api/auth?action=register', {
+    return SW.api('/api/auth', {
       method: 'POST',
-      body: { username, password, displayName }
+      body: { action: 'register', username, password, displayName }
     });
   },
   logout() {
@@ -41,6 +41,14 @@ SW.auth = {
 
 SW.requireAuth = async function () {
   const r = await SW.auth.me();
+  if (r.code === 'RESTRICTED') {
+    // Auto logout + show message then send to login
+    try { await SW.auth.logout(); } catch (_) {}
+    const msg = r.error || 'Your account is restricted';
+    sessionStorage.setItem('sw_restrict_msg', msg);
+    window.location.replace('/?restricted=1');
+    return null;
+  }
   if (!r.ok || !r.user) {
     window.location.replace('/');
     return null;
