@@ -15,7 +15,6 @@
     <div class="orb orb-2"></div>
   </div>
 
-  <!-- LOGIN -->
   <div id="login-view" class="panel-login">
     <div class="panel-card">
       <div class="panel-logo">
@@ -23,25 +22,19 @@
           <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="url(#la)"/><circle cx="24" cy="24" r="11" stroke="#fff" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#fff"/><defs><linearGradient id="la" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#6c5ce7"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs></svg>
         </div>
         <h1>Admin Login</h1>
-        <p class="sub">Only accounts with role = admin</p>
+        <p class="sub">Password only</p>
       </div>
       <form id="admin-login-form" class="panel-form">
         <div class="field">
-          <label>Username</label>
-          <input type="text" id="admin-user" autocomplete="username" required />
-        </div>
-        <div class="field">
           <label>Password</label>
-          <input type="password" id="admin-pass" autocomplete="current-password" required />
+          <input type="password" id="admin-pass" autocomplete="current-password" required placeholder="Admin password" />
         </div>
         <p id="admin-error" class="form-error hidden"></p>
-        <button type="submit" class="btn primary full">Login as Admin</button>
+        <button type="submit" class="btn primary full">Login</button>
       </form>
-      <p class="panel-hint">Use the same password you registered with. Account must have role = 2.</p>
     </div>
   </div>
 
-  <!-- DASHBOARD -->
   <div id="dash-view" class="panel-dash hidden">
     <header class="panel-top">
       <div class="brand">Admin Panel</div>

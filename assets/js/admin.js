@@ -30,20 +30,14 @@
   document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     showError('');
-    const username = document.getElementById('admin-user').value.trim().toLowerCase();
     const password = document.getElementById('admin-pass').value;
     try {
       const r = await SW.api('/api/auth', {
         method: 'POST',
-        body: { action: 'login', username, password }
+        body: { action: 'panel-login', panel: 'admin', password }
       });
       if (!r.ok) {
-        showError(r.error || 'Login failed');
-        return;
-      }
-      if (r.user.role !== 2) {
-        await SW.auth.logout();
-        showError('This account is not an admin (role must be 2)');
+        showError(r.error || 'Wrong password');
         return;
       }
       enterDash(r.user);
@@ -77,7 +71,6 @@
           <span class="meta">@${esc(u.username)}</span>
           <span class="role-badge ${role}">${role}</span>
           <span class="meta">${esc(u.status || 'active')}</span>
-          <span class="meta">${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : ''}</span>
         </div>`;
       }).join('');
     } catch (e) {

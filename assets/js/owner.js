@@ -29,20 +29,14 @@
   document.getElementById('owner-login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     showError('');
-    const username = document.getElementById('owner-user').value.trim().toLowerCase();
     const password = document.getElementById('owner-pass').value;
     try {
       const r = await SW.api('/api/auth', {
         method: 'POST',
-        body: { action: 'login', username, password }
+        body: { action: 'panel-login', panel: 'owner', password }
       });
       if (!r.ok) {
-        showError(r.error || 'Login failed');
-        return;
-      }
-      if (r.user.role !== 1) {
-        await SW.auth.logout();
-        showError('This account is not the owner (role must be 1)');
+        showError(r.error || 'Wrong password');
         return;
       }
       enterDash(r.user);
@@ -54,31 +48,6 @@
   document.getElementById('owner-logout').addEventListener('click', async () => {
     await SW.auth.logout();
     location.reload();
-  });
-
-  document.getElementById('add-admin-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const msg = document.getElementById('add-admin-msg');
-    msg.classList.add('hidden');
-    const username = document.getElementById('new-admin-user').value.trim().toLowerCase();
-    const password = document.getElementById('new-admin-pass').value;
-    try {
-      const r = await SW.api('/api/admin?action=create-admin', {
-        method: 'POST',
-        body: { username, password }
-      });
-      if (!r.ok) {
-        msg.textContent = r.error || 'Failed';
-        msg.classList.remove('hidden');
-        return;
-      }
-      document.getElementById('new-admin-user').value = '';
-      document.getElementById('new-admin-pass').value = '';
-      loadLists();
-    } catch (err) {
-      msg.textContent = err.message || 'Error';
-      msg.classList.remove('hidden');
-    }
   });
 
   async function loadLists() {
