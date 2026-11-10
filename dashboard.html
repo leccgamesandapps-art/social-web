@@ -25,7 +25,6 @@
   </div>
 
   <div id="app" class="app hidden">
-    <!-- Top bar -->
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand-center">
@@ -37,7 +36,6 @@
       </div>
     </header>
 
-    <!-- Main content area (views swap here) -->
     <main id="main" class="main">
       <section data-view="home" class="view active">
         <div class="view-head"><h2>Home</h2></div>
@@ -149,7 +147,6 @@
       </section>
     </main>
 
-    <!-- Bottom navigation -->
     <nav class="bottom-nav">
       <a href="#home" class="nav-item active" data-nav="home"><span class="ico">🏠</span><span>Home</span></a>
       <a href="#search" class="nav-item" data-nav="search"><span class="ico">🔍</span><span>Search</span></a>
@@ -159,7 +156,6 @@
     </nav>
   </div>
 
-  <!-- Full-screen Menu popup -->
   <div id="menu-overlay" class="menu-overlay hidden">
     <div class="menu-panel">
       <div class="menu-head">
@@ -172,6 +168,33 @@
         <button type="button" class="menu-item" data-goto="notifications">Notifications</button>
         <button type="button" class="menu-item" data-goto="settings">Settings</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Report popup -->
+  <div id="report-overlay" class="menu-overlay hidden">
+    <div class="menu-panel">
+      <div class="menu-head">
+        <h2>Report user</h2>
+        <button type="button" class="btn ghost" id="report-close">Close</button>
+      </div>
+      <p class="hint" id="report-target" style="margin-bottom:12px"></p>
+      <div class="field" style="margin-bottom:10px">
+        <label>Reason</label>
+        <select id="report-reason" style="width:100%;background:#0a0c12;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px">
+          <option value="spam">Spam</option>
+          <option value="harassment">Harassment</option>
+          <option value="hate">Hate / abuse</option>
+          <option value="impersonation">Impersonation</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label>Details (optional)</label>
+        <textarea id="report-detail" rows="3" maxlength="500" placeholder="Describe the issue…" style="width:100%;background:#0a0c12;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px"></textarea>
+      </div>
+      <p id="report-msg" class="form-error hidden" style="color:#ff6b6b;font-size:.85rem"></p>
+      <button type="button" class="btn primary full" id="report-submit">Submit report</button>
     </div>
   </div>
 
