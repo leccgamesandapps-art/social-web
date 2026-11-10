@@ -12,7 +12,6 @@
   function esc(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
-  function roleName(r) { return r === 1 ? 'owner' : r === 2 ? 'admin' : 'user'; }
   function statusBadge(u) {
     const st = u.status || 'active';
     let extra = u.statusUntil ? ' until ' + new Date(u.statusUntil).toLocaleString() : '';
@@ -78,13 +77,13 @@
         <h2>Add Admin</h2>
         <form id="add-admin-form" class="inline-form">
           <input type="text" id="new-admin-user" placeholder="username" required />
-          <input type="password" id="new-admin-pass" placeholder="password (if new)" />
+          <input type="password" id="new-admin-pass" placeholder="password" required />
           <button type="submit" class="btn primary">Add Admin</button>
         </form>
         <p id="add-admin-msg" class="form-error hidden"></p>
       </section>
       <section class="panel-section"><h2>Admins</h2><div class="user-list" id="admin-list">Loading…</div></section>
-      <section class="panel-section"><h2>Members</h2><div class="user-list" id="member-list">Loading…</div></section>`;
+      <section class="panel-section"><h2>Members (users)</h2><div class="user-list" id="member-list">Loading…</div></section>`;
 
     document.getElementById('add-admin-form').onsubmit = async (e) => {
       e.preventDefault();
@@ -100,27 +99,41 @@
     try {
       const r = await SW.api('/api/admin?action=list');
       if (!r.ok) throw new Error(r.error);
-      const users = r.users || [];
-      const admins = users.filter(u => u.role === 2);
-      const members = users.filter(u => u.role === 0);
-      document.getElementById('admin-list').innerHTML = admins.length ? admins.map(u => rowHtml(u, true)).join('') : '<div class="user-row"><span class="meta">No admins</span></div>';
-      document.getElementById('member-list').innerHTML = members.length ? members.map(u => rowHtml(u, false)).join('') : '<div class="user-row"><span class="meta">No members</span></div>';
-      main.querySelectorAll('[data-view-user]').forEach(btn => { btn.onclick = () => { location.hash = 'user_' + btn.dataset.viewUser; }; });
-      main.querySelectorAll('[data-view-admin]').forEach(btn => { btn.onclick = () => { location.hash = 'admin_' + btn.dataset.viewAdmin; }; });
+      const members = r.users || [];
+      const admins = r.admins || [];
+
+      document.getElementById('admin-list').innerHTML = admins.length
+        ? admins.map(u => `
+          <div class="user-row">
+            <span class="name">${esc(u.displayName || u.username)}</span>
+            <span class="meta">@${esc(u.username)}</span>
+            <span class="role-badge admin">admin</span>
+            ${statusBadge(u)}
+            <div class="actions"><button type="button" class="btn ghost" data-view-admin="${esc(u.username)}">View</button></div>
+          </div>`).join('')
+        : '<div class="user-row"><span class="meta">No admins (use panel passwords admin1/admin2 or Add Admin)</span></div>';
+
+      document.getElementById('member-list').innerHTML = members.length
+        ? members.map(u => `
+          <div class="user-row">
+            <span class="name">${esc(u.displayName || u.username)}</span>
+            <span class="meta">@${esc(u.username)}</span>
+            <span class="role-badge user">user</span>
+            ${statusBadge(u)}
+            <div class="actions"><button type="button" class="btn ghost" data-view-user="${esc(u.username)}">View</button></div>
+          </div>`).join('')
+        : '<div class="user-row"><span class="meta">No members yet — register on the main site</span></div>';
+
+      main.querySelectorAll('[data-view-user]').forEach(btn => {
+        btn.onclick = () => { location.hash = 'user_' + btn.dataset.viewUser; };
+      });
+      main.querySelectorAll('[data-view-admin]').forEach(btn => {
+        btn.onclick = () => { location.hash = 'admin_' + btn.dataset.viewAdmin; };
+      });
     } catch (e) {
       document.getElementById('admin-list').textContent = e.message;
       document.getElementById('member-list').textContent = e.message;
     }
-  }
-
-  function rowHtml(u, isAdmin) {
-    return `<div class="user-row">
-      <span class="name">${esc(u.displayName || u.username)}</span>
-      <span class="meta">@${esc(u.username)}</span>
-      <span class="role-badge ${roleName(u.role)}">${roleName(u.role)}</span>
-      ${statusBadge(u)}
-      <div class="actions"><button type="button" class="btn ghost" data-view-${isAdmin ? 'admin' : 'user'}="${esc(u.username)}">View</button></div>
-    </div>`;
   }
 
   async function renderAdmin(username) {
@@ -134,7 +147,6 @@
         <div class="mod-card">
           <div class="label">Admin account</div>
           <div><strong>${esc(u.displayName)}</strong> · @${esc(u.username)}</div>
-          <div class="meta" style="margin-top:6px">${statusBadge(u)}</div>
           <div class="mod-actions" style="margin-top:14px">
             <button type="button" class="btn danger" id="btn-remove-admin">Remove admin</button>
             <button type="button" class="btn ghost" id="btn-back2">Back</button>
@@ -161,7 +173,7 @@
       document.getElementById('user-detail').innerHTML = `
         <div class="mod-card"><div class="label">Account</div>
           <div><strong>${esc(u.displayName)}</strong> · @${esc(u.username)}</div>
-          <div class="meta" style="margin-top:6px">Role: ${roleName(u.role)} · ${statusBadge(u)}</div></div>
+          <div class="meta" style="margin-top:6px">${statusBadge(u)}</div></div>
         <div class="mod-card"><div class="label">Ban</div>
           <div class="mod-actions">
             <button type="button" class="btn danger" data-act="ban">Ban permanent</button>
