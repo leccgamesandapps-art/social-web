@@ -12,15 +12,16 @@
   function esc(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
-  function roleName(r) { return r === 1 ? 'owner' : r === 2 ? 'admin' : 'user'; }
   function statusBadge(u) {
     const st = u.status || 'active';
-    let extra = u.statusUntil ? ' until ' + new Date(u.statusUntil).toLocaleString() : '';
+    const extra = u.statusUntil ? ' until ' + new Date(u.statusUntil).toLocaleString() : '';
     return `<span class="status-badge ${esc(st)}">${esc(st)}${esc(extra)}</span>`;
   }
   function parseHash() {
     const h = (location.hash || '#dashboard').replace(/^#/, '');
-    if (h.startsWith('user_') || h.startsWith('user=')) return { view: 'user', username: h.replace(/^user[_=]/, '') };
+    if (h.startsWith('user_') || h.startsWith('user=')) {
+      return { view: 'user', username: h.replace(/^user[_=]/, '') };
+    }
     return { view: 'dashboard' };
   }
 
@@ -52,10 +53,15 @@
         method: 'POST',
         body: { action: 'panel-login', panel: 'admin', password }
       });
-      if (!r.ok) { showError(r.error || 'Wrong password / not an admin'); return; }
+      if (!r.ok) {
+        showError(r.error || 'Wrong password');
+        return;
+      }
       me = r.user;
       enterDash();
-    } catch (err) { showError(err.message || 'Network error'); }
+    } catch (err) {
+      showError(err.message || 'Network error');
+    }
   });
 
   document.getElementById('admin-logout').addEventListener('click', async () => {
@@ -70,104 +76,169 @@
   }
   window.addEventListener('hashchange', route);
 
-  // ADMIN: only normal users (role = 0). No owner, no other admins.
+  // ADMIN = users table ONLY
   async function renderDashboard() {
-    main.innerHTML = `<h2>Members</h2><p class="meta" style="font-size:.8rem;color:var(--text-muted);margin:-6px 0 12px">Users only · ban / suspend / timer</p><div class="user-list" id="user-list">Loading…</div>`;
+    main.innerHTML =
+      '<h2>Members</h2>' +
+      '<p class="meta" style="font-size:.8rem;color:var(--text-muted);margin:-6px 0 12px">From users table only</p>' +
+      '<div class="user-list" id="user-list">Loading…</div>';
+
     try {
       const r = await SW.api('/api/admin?action=list');
-      if (!r.ok) { document.getElementById('user-list').textContent = r.error; return; }
-      const users = (r.users || []).filter(u => u.role === 0);
-      document.getElementById('user-list').innerHTML = users.length
-        ? users.map(u => `
-        <div class="user-row">
-          <span class="name">${esc(u.displayName || u.username)}</span>
-          <span class="meta">@${esc(u.username)}</span>
-          <span class="role-badge user">user</span>
-          ${statusBadge(u)}
-          <div class="actions"><button type="button" class="btn ghost" data-view="${esc(u.username)}">View</button></div>
-        </div>`).join('')
-        : '<div class="user-row"><span class="meta">No members yet</span></div>';
-      main.querySelectorAll('[data-view]').forEach(btn => {
-        btn.addEventListener('click', () => { location.hash = 'user_' + btn.dataset.view; });
+      if (!r.ok) {
+        document.getElementById('user-list').textContent = r.error || 'Failed';
+        return;
+      }
+
+      // Strict: only accountType user / role 0. Never show admins.
+      const users = (r.users || []).filter(function (u) {
+        return u.accountType === 'user' || u.role === 0;
       });
-    } catch (e) { document.getElementById('user-list').textContent = e.message; }
+
+      if (!users.length) {
+        document.getElementById('user-list').innerHTML =
+          '<div class="user-row"><span class="meta">No members in users table</span></div>';
+        return;
+      }
+
+      document.getElementById('user-list').innerHTML = users.map(function (u) {
+        return (
+          '<div class="user-row">' +
+            '<span class="name">' + esc(u.displayName || u.username) + '</span>' +
+            '<span class="meta">@' + esc(u.username) + '</span>' +
+            '<span class="role-badge user">user</span>' +
+            statusBadge(u) +
+            '<div class="actions">' +
+              '<button type="button" class="btn ghost" data-view="' + esc(u.username) + '">View</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+
+      main.querySelectorAll('[data-view]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          location.hash = 'user_' + btn.getAttribute('data-view');
+        });
+      });
+    } catch (e) {
+      document.getElementById('user-list').textContent = e.message || 'Error';
+    }
   }
 
   async function renderUser(username) {
-    main.innerHTML = `<div class="view-head">
-      <button type="button" class="btn ghost" id="btn-back">← Back</button>
-      <h2>@${esc(username)}</h2>
-    </div><div id="user-detail">Loading…</div>`;
-    document.getElementById('btn-back').onclick = () => { location.hash = 'dashboard'; };
+    main.innerHTML =
+      '<div class="view-head">' +
+        '<button type="button" class="btn ghost" id="btn-back">← Back</button>' +
+        '<h2>@' + esc(username) + '</h2>' +
+      '</div>' +
+      '<div id="user-detail">Loading…</div>';
+
+    document.getElementById('btn-back').onclick = function () {
+      location.hash = 'dashboard';
+    };
+
     try {
       const r = await SW.api('/api/admin?action=user&username=' + encodeURIComponent(username));
-      if (!r.ok) { document.getElementById('user-detail').textContent = r.error; return; }
-      const u = r.user;
-      // Admin can only manage role=0 users
-      if (u.role !== 0) {
-        document.getElementById('user-detail').innerHTML =
-          `<div class="mod-card"><div class="meta">Admins can only moderate normal users.</div>
-          <button type="button" class="btn ghost" id="btn-back2">Back</button></div>`;
-        document.getElementById('btn-back2').onclick = () => { location.hash = 'dashboard'; };
+      if (!r.ok) {
+        document.getElementById('user-detail').textContent = r.error || 'Not found';
         return;
       }
+      const u = r.user;
+
+      // Admin may only open users-table accounts
+      if (u.accountType === 'admin' || u.role === 2 || u.role === 1) {
+        document.getElementById('user-detail').innerHTML =
+          '<div class="mod-card"><div class="meta">Admins can only moderate accounts from the users table.</div>' +
+          '<button type="button" class="btn ghost" id="btn-back2">Back</button></div>';
+        document.getElementById('btn-back2').onclick = function () {
+          location.hash = 'dashboard';
+        };
+        return;
+      }
+
       const logs = r.logs || [];
-      document.getElementById('user-detail').innerHTML = `
-        <div class="mod-card">
-          <div class="label">Account</div>
-          <div><strong>${esc(u.displayName)}</strong> · @${esc(u.username)}</div>
-          <div class="meta" style="margin-top:6px">${statusBadge(u)}</div>
-        </div>
-        <div class="mod-card">
-          <div class="label">Ban</div>
-          <div class="mod-actions">
-            <button type="button" class="btn danger" data-act="ban">Ban permanent</button>
-            <button type="button" class="btn danger" data-act="ban_timer">Ban with timer</button>
-            <button type="button" class="btn ok" data-act="unban">Unban</button>
-          </div>
-          <div class="timer-row hidden" id="ban-timer">
-            <input type="number" id="ban-amount" value="1" min="1" />
-            <select id="ban-unit"><option value="hours">hours</option><option value="days">days</option><option value="weeks">weeks</option><option value="minutes">minutes</option></select>
-            <button type="button" class="btn danger" id="ban-timer-go">Apply ban timer</button>
-          </div>
-        </div>
-        <div class="mod-card">
-          <div class="label">Suspend</div>
-          <div class="mod-actions">
-            <button type="button" class="btn warn" data-act="suspend">Suspend permanent</button>
-            <button type="button" class="btn warn" data-act="suspend_timer">Suspend with timer</button>
-            <button type="button" class="btn ok" data-act="unsuspend">Unsuspend</button>
-          </div>
-          <div class="timer-row hidden" id="sus-timer">
-            <input type="number" id="sus-amount" value="1" min="1" />
-            <select id="sus-unit"><option value="hours">hours</option><option value="days">days</option><option value="weeks">weeks</option><option value="minutes">minutes</option></select>
-            <button type="button" class="btn warn" id="sus-timer-go">Apply suspend timer</button>
-          </div>
-        </div>
-        <div class="mod-card">
-          <div class="label">Report log</div>
-          <div class="log-list">
-            ${logs.length ? logs.map(l => `<div class="log-item"><div><strong>${esc(l.action)}</strong> by ${esc(l.by_role)} @${esc(l.by_name)}</div><div>${esc(l.note || '')}</div><div class="when">${l.created_at ? new Date(l.created_at).toLocaleString() : ''}</div></div>`).join('') : '<div class="meta">No logs yet</div>'}
-          </div>
-        </div>`;
-      main.querySelectorAll('[data-act]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const act = btn.dataset.act;
-          if (act === 'ban_timer') { document.getElementById('ban-timer').classList.remove('hidden'); return; }
-          if (act === 'suspend_timer') { document.getElementById('sus-timer').classList.remove('hidden'); return; }
+      document.getElementById('user-detail').innerHTML =
+        '<div class="mod-card">' +
+          '<div class="label">Account</div>' +
+          '<div><strong>' + esc(u.displayName) + '</strong> · @' + esc(u.username) + '</div>' +
+          '<div class="meta" style="margin-top:6px">' + statusBadge(u) + '</div>' +
+        '</div>' +
+        '<div class="mod-card">' +
+          '<div class="label">Ban</div>' +
+          '<div class="mod-actions">' +
+            '<button type="button" class="btn danger" data-act="ban">Ban permanent</button>' +
+            '<button type="button" class="btn danger" data-act="ban_timer">Ban with timer</button>' +
+            '<button type="button" class="btn ok" data-act="unban">Unban</button>' +
+          '</div>' +
+          '<div class="timer-row hidden" id="ban-timer">' +
+            '<input type="number" id="ban-amount" value="1" min="1" />' +
+            '<select id="ban-unit"><option value="hours">hours</option><option value="days">days</option><option value="weeks">weeks</option><option value="minutes">minutes</option></select>' +
+            '<button type="button" class="btn danger" id="ban-timer-go">Apply ban timer</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="mod-card">' +
+          '<div class="label">Suspend</div>' +
+          '<div class="mod-actions">' +
+            '<button type="button" class="btn warn" data-act="suspend">Suspend permanent</button>' +
+            '<button type="button" class="btn warn" data-act="suspend_timer">Suspend with timer</button>' +
+            '<button type="button" class="btn ok" data-act="unsuspend">Unsuspend</button>' +
+          '</div>' +
+          '<div class="timer-row hidden" id="sus-timer">' +
+            '<input type="number" id="sus-amount" value="1" min="1" />' +
+            '<select id="sus-unit"><option value="hours">hours</option><option value="days">days</option><option value="weeks">weeks</option><option value="minutes">minutes</option></select>' +
+            '<button type="button" class="btn warn" id="sus-timer-go">Apply suspend timer</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="mod-card">' +
+          '<div class="label">Report log</div>' +
+          '<div class="log-list">' +
+            (logs.length
+              ? logs.map(function (l) {
+                  return '<div class="log-item"><div><strong>' + esc(l.action) + '</strong> by ' + esc(l.by_role) + ' @' + esc(l.by_name) + '</div><div>' + esc(l.note || '') + '</div><div class="when">' + (l.created_at ? new Date(l.created_at).toLocaleString() : '') + '</div></div>';
+                }).join('')
+              : '<div class="meta">No logs yet</div>') +
+          '</div>' +
+        '</div>';
+
+      main.querySelectorAll('[data-act]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          const act = btn.getAttribute('data-act');
+          if (act === 'ban_timer') {
+            document.getElementById('ban-timer').classList.remove('hidden');
+            return;
+          }
+          if (act === 'suspend_timer') {
+            document.getElementById('sus-timer').classList.remove('hidden');
+            return;
+          }
           await doMod(username, act);
         });
       });
-      document.getElementById('ban-timer-go').onclick = () => doMod(username, 'ban_timer', { amount: document.getElementById('ban-amount').value, unit: document.getElementById('ban-unit').value });
-      document.getElementById('sus-timer-go').onclick = () => doMod(username, 'suspend_timer', { amount: document.getElementById('sus-amount').value, unit: document.getElementById('sus-unit').value });
-    } catch (e) { document.getElementById('user-detail').textContent = e.message; }
+      document.getElementById('ban-timer-go').onclick = function () {
+        doMod(username, 'ban_timer', {
+          amount: document.getElementById('ban-amount').value,
+          unit: document.getElementById('ban-unit').value
+        });
+      };
+      document.getElementById('sus-timer-go').onclick = function () {
+        doMod(username, 'suspend_timer', {
+          amount: document.getElementById('sus-amount').value,
+          unit: document.getElementById('sus-unit').value
+        });
+      };
+    } catch (e) {
+      document.getElementById('user-detail').textContent = e.message || 'Error';
+    }
   }
 
   async function doMod(username, modAction, extra) {
     if (!confirm('Confirm: ' + modAction + ' @' + username + '?')) return;
-    const body = Object.assign({ username, modAction }, extra || {});
-    const r = await SW.api('/api/admin?action=moderate', { method: 'POST', body });
-    if (!r.ok) { alert(r.error || 'Failed'); return; }
+    const body = Object.assign({ username: username, modAction: modAction }, extra || {});
+    const r = await SW.api('/api/admin?action=moderate', { method: 'POST', body: body });
+    if (!r.ok) {
+      alert(r.error || 'Failed');
+      return;
+    }
     renderUser(username);
   }
 
