@@ -70,20 +70,23 @@
   }
   window.addEventListener('hashchange', route);
 
+  // ADMIN: only normal users (role = 0). No owner, no other admins.
   async function renderDashboard() {
-    main.innerHTML = `<h2>Members</h2><div class="user-list" id="user-list">Loading…</div>`;
+    main.innerHTML = `<h2>Members</h2><p class="meta" style="font-size:.8rem;color:var(--text-muted);margin:-6px 0 12px">Users only · ban / suspend / timer</p><div class="user-list" id="user-list">Loading…</div>`;
     try {
       const r = await SW.api('/api/admin?action=list');
       if (!r.ok) { document.getElementById('user-list').textContent = r.error; return; }
-      const users = r.users || [];
-      document.getElementById('user-list').innerHTML = users.map(u => `
+      const users = (r.users || []).filter(u => u.role === 0);
+      document.getElementById('user-list').innerHTML = users.length
+        ? users.map(u => `
         <div class="user-row">
           <span class="name">${esc(u.displayName || u.username)}</span>
           <span class="meta">@${esc(u.username)}</span>
-          <span class="role-badge ${roleName(u.role)}">${roleName(u.role)}</span>
+          <span class="role-badge user">user</span>
           ${statusBadge(u)}
           <div class="actions"><button type="button" class="btn ghost" data-view="${esc(u.username)}">View</button></div>
-        </div>`).join('') || '<div class="user-row"><span class="meta">No users</span></div>';
+        </div>`).join('')
+        : '<div class="user-row"><span class="meta">No members yet</span></div>';
       main.querySelectorAll('[data-view]').forEach(btn => {
         btn.addEventListener('click', () => { location.hash = 'user_' + btn.dataset.view; });
       });
@@ -100,12 +103,20 @@
       const r = await SW.api('/api/admin?action=user&username=' + encodeURIComponent(username));
       if (!r.ok) { document.getElementById('user-detail').textContent = r.error; return; }
       const u = r.user;
+      // Admin can only manage role=0 users
+      if (u.role !== 0) {
+        document.getElementById('user-detail').innerHTML =
+          `<div class="mod-card"><div class="meta">Admins can only moderate normal users.</div>
+          <button type="button" class="btn ghost" id="btn-back2">Back</button></div>`;
+        document.getElementById('btn-back2').onclick = () => { location.hash = 'dashboard'; };
+        return;
+      }
       const logs = r.logs || [];
       document.getElementById('user-detail').innerHTML = `
         <div class="mod-card">
           <div class="label">Account</div>
           <div><strong>${esc(u.displayName)}</strong> · @${esc(u.username)}</div>
-          <div class="meta" style="margin-top:6px">Role: ${roleName(u.role)} · ${statusBadge(u)}</div>
+          <div class="meta" style="margin-top:6px">${statusBadge(u)}</div>
         </div>
         <div class="mod-card">
           <div class="label">Ban</div>
