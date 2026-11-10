@@ -85,7 +85,6 @@
         return;
       }
 
-      // Force: only U (users). Ignore any admin rows if API ever sends them.
       var users = (r.users || []).filter(function (u) {
         return u.tag === 'U' || u.accountType === 'user' || u.role === 0;
       });
@@ -156,7 +155,7 @@
           '</div>' +
           '<div class="timer-row hidden" id="ban-timer">' +
             '<input type="number" id="ban-amount" value="1" min="1" />' +
-            '<select id="ban-unit"><option value="hours">hours</option><option value="daysdays">days</option><option value="weeks">weeks</option><option value="minutes">minutes</option></select>' +
+            '<select id="ban-unit"><option value="hours">hours</option><option value="days">days</option><option value="weeks">weeks</option><option value="minutes">minutes</option></select>' +
             '<button type="button" class="btn danger" id="ban-timer-go">Apply</button>' +
           '</div></div>' +
         '<div class="mod-card"><div class="label">Suspend</div>' +
