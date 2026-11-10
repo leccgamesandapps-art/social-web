@@ -31,7 +31,9 @@ module.exports = async function handler(req, res) {
     const url = new URL(req.url, 'http://x');
     const action = (url.searchParams.get('action') || '').toLowerCase();
 
-    // LIST — admin sees only users table; owner sees users + admins
+    // LIST
+    // Admin (role 2): ONLY users table
+    // Owner (role 1): users + admins tables separately
     if (req.method === 'GET' && (action === 'list' || !action)) {
       const { data: members, error: e1 } = await sb
         .from('users')
@@ -39,50 +41,63 @@ module.exports = async function handler(req, res) {
         .order('id', { ascending: true });
       if (e1) return json(res, 400, { ok: false, error: e1.message });
 
-      const users = (members || []).map(u => ({
+      const usersOnly = (members || []).map(u => ({
         username: u.username,
         displayName: u.display_name,
         role: 0,
-        status: u.status,
+        status: u.status || 'active',
         statusUntil: u.status_until,
         createdAt: u.created_at,
         accountType: 'user'
       }));
 
-      if (role === 1) {
-        const { data: ads } = await sb.from('admins').select('username, display_name, status, status_until, created_at').order('id');
-        const admins = (ads || []).map(a => ({
-          username: a.username,
-          displayName: a.display_name,
-          role: 2,
-          status: a.status,
-          statusUntil: a.status_until,
-          createdAt: a.created_at,
-          accountType: 'admin'
-        }));
-        return json(res, 200, { ok: true, users: [...admins, ...users] });
+      if (role === 2) {
+        // ADMIN PANEL — users only, never admins/owner
+        return json(res, 200, { ok: true, users: usersOnly });
       }
 
-      return json(res, 200, { ok: true, users });
+      // OWNER PANEL
+      const { data: ads } = await sb
+        .from('admins')
+        .select('username, display_name, status, status_until, created_at')
+        .order('id');
+      const adminList = (ads || []).map(a => ({
+        username: a.username,
+        displayName: a.display_name,
+        role: 2,
+        status: a.status || 'active',
+        statusUntil: a.status_until,
+        createdAt: a.created_at,
+        accountType: 'admin'
+      }));
+      return json(res, 200, { ok: true, users: usersOnly, admins: adminList });
     }
 
     if (req.method === 'GET' && action === 'user') {
       const username = String(url.searchParams.get('username') || '').toLowerCase();
       if (!username) return json(res, 400, { ok: false, error: 'username required' });
 
-      // Prefer users table, then admins (owner only)
-      let { data: u } = await sb.from('users').select('username, display_name, status, status_until, created_at, bio').eq('username', username).maybeSingle();
+      let { data: u } = await sb
+        .from('users')
+        .select('username, display_name, status, status_until, created_at, bio')
+        .eq('username', username)
+        .maybeSingle();
       let accountType = 'user';
       let userRole = 0;
+
       if (!u && role === 1) {
-        const { data: a } = await sb.from('admins').select('username, display_name, status, status_until, created_at').eq('username', username).maybeSingle();
+        const { data: a } = await sb
+          .from('admins')
+          .select('username, display_name, status, status_until, created_at')
+          .eq('username', username)
+          .maybeSingle();
         if (a) {
           u = { ...a, bio: null };
           accountType = 'admin';
           userRole = 2;
         }
       }
-      if (!u) return json(res, 404, { ok: false, error: 'User not found' });
+      if (!u) return json(res, 404, { ok: false, error: 'Not found' });
 
       const { data: logs } = await sb
         .from('moderation_logs')
@@ -108,25 +123,24 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'POST' && action === 'moderate') {
+      if (role !== 1 && role !== 2) return json(res, 403, { ok: false, error: 'Forbidden' });
       const body = await readBody(req);
       const target = String(body.username || '').toLowerCase().trim();
       const modAction = String(body.modAction || '').toLowerCase();
       const note = String(body.note || '').slice(0, 300);
       if (!target) return json(res, 400, { ok: false, error: 'username required' });
 
-      // Only moderate users table (admins moderate users; owner can too)
       const { data: u } = await sb.from('users').select('username').eq('username', target).maybeSingle();
-      if (!u) return json(res, 404, { ok: false, error: 'User not found in users table' });
-      if (target === session.username) return json(res, 403, { ok: false, error: 'Cannot moderate yourself' });
+      if (!u) return json(res, 404, { ok: false, error: 'User not found' });
 
       let status = 'active';
       let statusUntil = null;
-      if (modAction === 'ban') { status = 'banned'; statusUntil = null; }
+      if (modAction === 'ban') { status = 'banned'; }
       else if (modAction === 'ban_timer') { status = 'banned'; statusUntil = parseDuration(body.amount, body.unit); }
-      else if (modAction === 'unban') { status = 'active'; statusUntil = null; }
-      else if (modAction === 'suspend') { status = 'suspended'; statusUntil = null; }
+      else if (modAction === 'unban') { status = 'active'; }
+      else if (modAction === 'suspend') { status = 'suspended'; }
       else if (modAction === 'suspend_timer') { status = 'suspended'; statusUntil = parseDuration(body.amount, body.unit); }
-      else if (modAction === 'unsuspend') { status = 'active'; statusUntil = null; }
+      else if (modAction === 'unsuspend') { status = 'active'; }
       else return json(res, 400, { ok: false, error: 'Unknown modAction' });
 
       const { error } = await sb.from('users').update({ status, status_until: statusUntil }).eq('username', target);
@@ -142,7 +156,6 @@ module.exports = async function handler(req, res) {
       return json(res, 200, { ok: true, username: target, status, statusUntil });
     }
 
-    // OWNER: add admin → admins table
     if (req.method === 'POST' && action === 'add-admin') {
       if (role !== 1) return json(res, 403, { ok: false, error: 'Owner only' });
       const body = await readBody(req);
@@ -152,12 +165,10 @@ module.exports = async function handler(req, res) {
       if (!/^[a-z0-9_]+$/.test(username)) return json(res, 400, { ok: false, error: 'Invalid username' });
       if (password.length < 6) return json(res, 400, { ok: false, error: 'Password min 6' });
 
-      const { data: existsAdmin } = await sb.from('admins').select('username').eq('username', username).maybeSingle();
-      if (existsAdmin) return json(res, 409, { ok: false, error: 'Already an admin' });
-      const { data: existsUser } = await sb.from('users').select('username').eq('username', username).maybeSingle();
-      if (existsUser) return json(res, 409, { ok: false, error: 'Username exists as user — pick another' });
-      const { data: existsOwner } = await sb.from('owner').select('username').eq('username', username).maybeSingle();
-      if (existsOwner) return json(res, 409, { ok: false, error: 'Username is owner' });
+      const { data: ea } = await sb.from('admins').select('username').eq('username', username).maybeSingle();
+      if (ea) return json(res, 409, { ok: false, error: 'Already admin' });
+      const { data: eu } = await sb.from('users').select('username').eq('username', username).maybeSingle();
+      if (eu) return json(res, 409, { ok: false, error: 'Username taken by a user' });
 
       const { error } = await sb.from('admins').insert({
         username,
@@ -166,21 +177,16 @@ module.exports = async function handler(req, res) {
         status: 'active'
       });
       if (error) return json(res, 400, { ok: false, error: error.message });
-      await sb.from('moderation_logs').insert({ username, action: 'create_admin', by_role: 'owner', by_name: session.username, note: 'Created admin' });
       return json(res, 201, { ok: true, username, role: 2 });
     }
 
-    // OWNER: remove admin → delete from admins table
     if (req.method === 'POST' && action === 'remove-admin') {
       if (role !== 1) return json(res, 403, { ok: false, error: 'Owner only' });
       const body = await readBody(req);
       const username = String(body.username || '').toLowerCase().trim();
-      if (!username) return json(res, 400, { ok: false, error: 'username required' });
-      // Don't delete built-in panel password accounts silently — still allow remove
       const { data: a } = await sb.from('admins').select('username').eq('username', username).maybeSingle();
       if (!a) return json(res, 404, { ok: false, error: 'Not an admin' });
       await sb.from('admins').delete().eq('username', username);
-      await sb.from('moderation_logs').insert({ username, action: 'remove_admin', by_role: 'owner', by_name: session.username, note: 'Removed admin' });
       return json(res, 200, { ok: true, username });
     }
 
