@@ -49,12 +49,23 @@ function getCookie(req, name) {
   }
   return null;
 }
-function setSessionCookie(res, token) {
+function cookieOpts() {
   const secure = process.env.VERCEL ? '; Secure' : '';
-  res.setHeader('Set-Cookie', `sw_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${secure}`);
+  return `Path=/; HttpOnly; SameSite=Lax${secure}`;
+}
+// USER session (index / dashboard / chat)
+function setSessionCookie(res, token) {
+  res.setHeader('Set-Cookie', `sw_session=${encodeURIComponent(token)}; ${cookieOpts()}; Max-Age=43200`);
 }
 function clearSessionCookie(res) {
-  res.setHeader('Set-Cookie', 'sw_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+  res.setHeader('Set-Cookie', `sw_session=; ${cookieOpts()}; Max-Age=0`);
+}
+// PANEL session (owner / admin) — separate from user
+function setPanelCookie(res, token) {
+  res.setHeader('Set-Cookie', `sw_panel=${encodeURIComponent(token)}; ${cookieOpts()}; Max-Age=43200`);
+}
+function clearPanelCookie(res) {
+  res.setHeader('Set-Cookie', `sw_panel=; ${cookieOpts()}; Max-Age=0`);
 }
 function json(res, status, obj) {
   res.statusCode = status;
@@ -62,4 +73,7 @@ function json(res, status, obj) {
   res.setHeader('Cache-Control', 'no-store');
   res.end(JSON.stringify(obj));
 }
-module.exports = { hashPassword, verifyPassword, signSession, verifySession, readBody, getCookie, setSessionCookie, clearSessionCookie, json };
+module.exports = {
+  hashPassword, verifyPassword, signSession, verifySession, readBody, getCookie,
+  setSessionCookie, clearSessionCookie, setPanelCookie, clearPanelCookie, json
+};
