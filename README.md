@@ -1,25 +1,19 @@
-# Social Web
+# le-social-web
 
-5 pages · Supabase · Vercel
+Vercel project: **le-social-web**  
+GitHub repo: **social-web** (synced from le-social-web)
 
 ## Pages
-| URL | File | Role |
-|-----|------|------|
-| `/` | index.html | User login/register (users table) |
-| `/dashboard` | dashboard.html | Feed, search, create, profile, friends, settings |
-| `/chat` | chat.html | DM / GC / Community |
-| `/admin` | admin.html | Admin panel (admins table, password only) |
-| `/owner` | owner.html | Owner panel (owner table, password only) |
-
-## Folders
-```
-api/           auth.js admin.js posts.js chat.js report.js + lib/
-assets/css/    core auth dashboard chat panel
-assets/js/     api auth-page dashboard chat admin owner
-schema-RESET.sql
-```
+- `/` index — user login/register
+- `/dashboard` — feed, search, create, profile, friends, settings
+- `/chat` — DM / GC / Community
+- `/admin` — admin panel (password)
+- `/owner` — owner panel (password)
+- `/help` — AI Help Center + 72h account deletion
 
 ## Auth
-- **U** users table → index login → dashboard + chat
-- **A** admins table → /admin password only → moderate users only
-- **O** owner table → /owner password only → manage admins + users
+| Role | Table | Entry |
+|------|-------|-------|
+| User | users | `/` username+password |
+| Admin | admins | `/admin` password only |
+| Owner | owner | `/owner` password only |

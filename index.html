@@ -15,7 +15,6 @@
     <div class="orb orb-2"></div>
     <div class="orb orb-3"></div>
   </div>
-
   <div id="loader" class="loader-screen">
     <div class="logo-mark">
       <svg viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="14" fill="url(#lg)"/><circle cx="24" cy="24" r="11" stroke="#fff" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#fff"/><defs><linearGradient id="lg" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#6c5ce7"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs></svg>
@@ -23,7 +22,6 @@
     <div class="spinner"></div>
     <p>Loading Social Web…</p>
   </div>
-
   <div id="auth-root" class="auth-root hidden">
     <div class="auth-card">
       <div class="auth-brand">
@@ -33,53 +31,28 @@
         <h1>Social Web</h1>
         <p class="tagline">Connect · Share · Discover</p>
       </div>
-
       <div class="tabs">
         <button type="button" class="tab active" data-tab="login">Login</button>
         <button type="button" class="tab" data-tab="register">Register</button>
       </div>
-
       <form id="form-login" class="auth-form" autocomplete="on">
-        <div class="field">
-          <label for="login-user">Username</label>
-          <input id="login-user" type="text" name="username" placeholder="your_username" required autocomplete="username" maxlength="20" />
-        </div>
-        <div class="field">
-          <label for="login-pass">Password</label>
-          <input id="login-pass" type="password" name="password" placeholder="••••••••" required autocomplete="current-password" />
-        </div>
+        <div class="field"><label for="login-user">Username</label><input id="login-user" type="text" name="username" placeholder="your_username" required autocomplete="username" maxlength="20" /></div>
+        <div class="field"><label for="login-pass">Password</label><input id="login-pass" type="password" name="password" placeholder="••••••••" required autocomplete="current-password" /></div>
         <button type="submit" class="btn primary full" id="btn-login">Login</button>
         <p class="form-error" id="login-error"></p>
       </form>
-
       <form id="form-register" class="auth-form hidden" autocomplete="on">
-        <div class="field">
-          <label for="reg-user">Username</label>
-          <input id="reg-user" type="text" name="username" placeholder="3–20 characters" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" />
-        </div>
-        <div class="field">
-          <label for="reg-display">Display name</label>
-          <input id="reg-display" type="text" name="displayName" placeholder="How others see you" required maxlength="32" />
-        </div>
-        <div class="field">
-          <label for="reg-pass">Password</label>
-          <input id="reg-pass" type="password" name="password" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password" />
-        </div>
-        <div class="field">
-          <label for="reg-pass2">Confirm password</label>
-          <input id="reg-pass2" type="password" name="password2" placeholder="Repeat password" required minlength="6" autocomplete="new-password" />
-        </div>
+        <div class="field"><label for="reg-user">Username</label><input id="reg-user" type="text" name="username" placeholder="3–20 characters" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" /></div>
+        <div class="field"><label for="reg-display">Display name</label><input id="reg-display" type="text" name="displayName" placeholder="How others see you" required maxlength="32" /></div>
+        <div class="field"><label for="reg-pass">Password</label><input id="reg-pass" type="password" name="password" placeholder="Min 6 characters" required minlength="6" autocomplete="new-password" /></div>
+        <div class="field"><label for="reg-pass2">Confirm password</label><input id="reg-pass2" type="password" name="password2" placeholder="Repeat password" required minlength="6" autocomplete="new-password" /></div>
         <button type="submit" class="btn primary full" id="btn-register">Create account</button>
         <p class="form-error" id="reg-error"></p>
       </form>
-
-      <p class="auth-help-link" style="text-align:center;margin-top:16px">
-        <a href="/help" style="color:#a78bfa;font-size:.9rem;text-decoration:none">Help Center</a>
-      </p>
+      <p style="text-align:center;margin-top:16px"><a href="/help" style="color:#a78bfa;font-size:.9rem;text-decoration:none">Help Center</a></p>
       <p style="text-align:center;margin-top:8px;font-size:.72rem;color:var(--text-muted)">Regular users only · Staff use /admin or /owner</p>
     </div>
   </div>
-
   <script src="/assets/js/api.js"></script>
   <script src="/assets/js/auth-page.js"></script>
 </body>
