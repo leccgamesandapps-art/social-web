@@ -41,17 +41,21 @@ SW.auth = {
 
 SW.requireAuth = async function () {
   const r = await SW.auth.me();
-  if (r.code === 'RESTRICTED') {
-    // Auto logout + show message then send to login
+  if (r.code === 'RESTRICTED' || r.code === 'DELETED') {
     try { await SW.auth.logout(); } catch (_) {}
-    const msg = r.error || 'Your account is restricted';
+    const msg = r.error || (r.code === 'DELETED' ? 'This account was deleted.' : 'Your account is restricted');
     sessionStorage.setItem('sw_restrict_msg', msg);
-    window.location.replace('/?restricted=1');
+    window.location.replace('/');
     return null;
   }
   if (!r.ok || !r.user) {
     window.location.replace('/');
     return null;
+  }
+  // Show deletion banner if scheduled
+  if (r.user.deletePending) {
+    const b = document.getElementById('delete-banner');
+    if (b) b.classList.remove('hidden');
   }
   return r.user;
 };

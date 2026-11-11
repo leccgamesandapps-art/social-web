@@ -25,6 +25,9 @@
   </div>
 
   <div id="app" class="app hidden">
+    <div id="delete-banner" class="hidden" style="background:rgba(251,191,36,.12);border-bottom:1px solid rgba(251,191,36,.3);padding:10px 14px;font-size:.85rem;color:#fbbf24;text-align:center">
+      Account deletion is scheduled. <a href="/help" style="color:#a78bfa">Cancel in Help Center</a>
+    </div>
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand-center">
@@ -109,12 +112,13 @@
           <div class="settings-group">
             <label class="group-label">Account</label>
             <p class="hint" id="settings-account">—</p>
+            <a href="/help" class="btn full" style="display:block;text-align:center;text-decoration:none;margin-bottom:8px">Help Center</a>
             <button type="button" class="btn full" id="btn-switch-account">Switch account</button>
             <button type="button" class="btn full" id="btn-logout">Logout</button>
           </div>
           <div class="settings-group danger">
             <label class="group-label">Danger zone</label>
-            <button type="button" class="btn danger full" id="btn-delete-account">Delete account</button>
+            <a href="/help" class="btn danger full" style="display:block;text-align:center;text-decoration:none" id="btn-delete-account">Delete account (Help Center)</a>
           </div>
         </div>
       </section>
@@ -167,11 +171,11 @@
         <button type="button" class="menu-item" data-goto="friends">Friends</button>
         <button type="button" class="menu-item" data-goto="notifications">Notifications</button>
         <button type="button" class="menu-item" data-goto="settings">Settings</button>
+        <a href="/help" class="menu-item" style="display:block;text-decoration:none;color:inherit">Help Center</a>
       </div>
     </div>
   </div>
 
-  <!-- Report popup -->
   <div id="report-overlay" class="menu-overlay hidden">
     <div class="menu-panel">
       <div class="menu-head">

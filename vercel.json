@@ -11,7 +11,9 @@
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/admin/(.*)", "destination": "/admin.html" },
     { "source": "/owner", "destination": "/owner.html" },
-    { "source": "/owner/(.*)", "destination": "/owner.html" }
+    { "source": "/owner/(.*)", "destination": "/owner.html" },
+    { "source": "/help", "destination": "/help.html" },
+    { "source": "/help/(.*)", "destination": "/help.html" }
   ],
   "headers": [
     {
