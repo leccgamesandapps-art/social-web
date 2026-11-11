@@ -1,0 +1,110 @@
+.help-body {
+  min-height: 100dvh;
+  color: var(--text);
+}
+.help-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(11, 13, 20, 0.88);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.help-header h1 {
+  flex: 1;
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin: 0;
+}
+.help-back {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.help-badge {
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(108, 92, 231, 0.25);
+  color: #c4b5fd;
+}
+.help-main {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+.help-bubble {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  animation: fadeUp 0.35s ease;
+}
+.help-bubble .who {
+  font-size: 0.72rem;
+  color: #a78bfa;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.help-bubble p {
+  margin: 0 0 8px;
+  line-height: 1.45;
+  font-size: 0.95rem;
+}
+.help-bubble p:last-child { margin-bottom: 0; }
+.help-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.help-choices button {
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(108, 92, 231, 0.12);
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.help-choices button:hover,
+.help-choices button:focus {
+  background: rgba(108, 92, 231, 0.28);
+  border-color: #a78bfa;
+}
+.help-warn {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.08);
+}
+.help-danger {
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.08);
+}
+.help-ok {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.08);
+}
+.help-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.help-input-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.35);
+  color: var(--text);
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
